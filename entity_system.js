@@ -147,12 +147,25 @@ function JSEntitySystem() {
     this.GameStart = (new Date()).getMilliseconds();
     this.LastUpdateTime = this.GameStart;
     
-    this.IntervalUpdateFunc() {
+    this.IntervalUpdateFunc = function() {
         var currentTime = (new Date()).getMilliseconds();
         
         engine.Update(currentTime - engine.LastUpdateTime);
         
         engine.LastUpdateTime = currentTime;
+    }
+    
+    this.StartUpdating = function() {
+        engine.StopUpdating();
+        
+        engine.UpdateIntervalKey = setInterval(engine.IntervalUpdateFunc);
+    }
+    
+    this.StopUpdating = function() {
+        if (typeof engine.UpdateIntervalKey !== 'undefined') {
+            clearInterval(engine.UpdateIntervalKey);
+            delete engine.UpdateIntervalKey;
+        }
     }
 }
 
@@ -174,14 +187,6 @@ entitySystem.RegisterComponent('TestComponent',
             	[],
                 []);
 
-var gameStart = (new Date()).getMilliseconds();
-var last
-function updateFunction() {
-    var currentTime = new Date();
-    
-    entitySystem.Update();
-}
-
-
+entitySystem.StartUpdating();
 
 var ent = new entitySystem.Entity();
