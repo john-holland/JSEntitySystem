@@ -142,13 +142,13 @@ Array.prototype.Any = function(predicate) {
 */
 Function.prototype.Curry = function() {
     var args = new Array(arguments.length);
-    	
+    var self = this;
     var i;
     for (i = 0; i < arguments.length; i++) {
         args[i] = arguments[i];
     }
     
     return function() {
-        return this.apply(this, args.concat(arguments));
+        return self.apply(self, args.concat(arguments));
     };
 }
