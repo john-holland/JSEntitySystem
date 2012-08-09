@@ -137,7 +137,7 @@ function JSEntitySystem() {
         delete engine.Entities[entityId];
     }
     
-    this.Update(gameTime) {
+    this.Update = function(gameTime) {
         var i;
         for(i = 0; i < engine.EntityUpdateList.length; i++) {
             engine.EntityUpdateList[i].Update(gameTime);
