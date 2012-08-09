@@ -1,6 +1,6 @@
-
-function JSEntitySystem() {
+function JSEntitySystem(updateIntervalMilliseconds) {
     this.NextFreeId = 0;
+    this.UpdateIntervalMilliseconds = updateIntervalMilliseconds;
     var engine = this;
     /*
     The component metadata collection.
@@ -53,7 +53,7 @@ function JSEntitySystem() {
     this.AddComponent = function(entity, componentName) {
     	var component = engine.Components[componentName];
     	var requiredData = component.RequiredData;
-    	var requiredComponents = component.RequiredComponent;
+    	var requiredComponents = component.RequiredComponents;
     	
     	if (!(componentName in entity.Components)) {
     		entity.Components[componentName] = engine.Components[componentName];
@@ -61,13 +61,13 @@ function JSEntitySystem() {
     	}
     	
     	for (var key in component.RequiredComponents) {
-    		if (!(key in entity.Components)) {
+    		if (typeof key === 'String' && !(key in entity.Components)) {
     			engine.AddComponent(entity, key);
     		}
     	}
     	
     	for (var key in component.RequiredData) {
-    		if (!(key in entity.Datas)) {
+    		if (typeof key === 'String' && !(key in entity.Datas)) {
     			entity.Datas[key] = component.RequiredData[key];
     		}
     	}
@@ -97,7 +97,7 @@ function JSEntitySystem() {
     	this.UpdateComponents = [];
     	
         this.AddComponent = function(componentName) {
-    		if (!(componentName in this.components)) {
+    		if (!(componentName in this.Components)) {
     			//recursively add components here.
     			//make sure to add each components required data here as well.
     			engine.AddComponent(this, componentName);
@@ -113,12 +113,16 @@ function JSEntitySystem() {
     	this.Update = function(gameTime) {
     		var i = 0;
     		for (i = 0; i < this.UpdateComponents.length; i++) {
-    			this.UpdateComponents[i].Update(self, gameTime);
+    			this.UpdateComponents[i].Methods.Update(self, gameTime);
     		}
     	};
     	
     	engine.Entities[this.Id] = this;
         engine.EntityUpdateList.push(this);
+    }
+    
+    this.CreateEntity = function(idToUse) {
+        return new engine.Entity(idToUse);
     }
     
     this.RemoveEntity = function(entityId) {
@@ -130,7 +134,7 @@ function JSEntitySystem() {
         
         var indexOfEntity = engine.EntityUpdateList.indexOf(entityToRemove);
         
-        if (indexOfEntity !=== -1) {
+        if (indexOfEntity !== -1) {
             engine.EntityUpdateList.splice(indexOfEntity, 1);
         }
         
@@ -158,7 +162,7 @@ function JSEntitySystem() {
     this.StartUpdating = function() {
         engine.StopUpdating();
         
-        engine.UpdateIntervalKey = setInterval(engine.IntervalUpdateFunc);
+        engine.UpdateIntervalKey = setInterval(engine.IntervalUpdateFunc, engine.UpdateIntervalMilliseconds);
     }
     
     this.StopUpdating = function() {
@@ -169,7 +173,7 @@ function JSEntitySystem() {
     }
 }
 
-var entitySystem = new JSEntitySystem();
+var entitySystem = new JSEntitySystem(32);
 
 entitySystem.RegisterComponent('TestComponent',
     new entitySystem.Component(function(entity, gameTime) {
@@ -180,6 +184,11 @@ entitySystem.RegisterComponent('TestComponent',
         				},
         			function(entity, gameTime) {
                         //update
+                        if (typeof entity.counter === 'undefined') {
+                            entity.counter = 0;
+                        }
+                        entity.counter++;
+                        $('title').html(gameTime + " " + entity.counter);
         				},
         			function(entity, gameTime) {
                         //render
@@ -189,4 +198,6 @@ entitySystem.RegisterComponent('TestComponent',
 
 entitySystem.StartUpdating();
 
-var ent = new entitySystem.Entity();
+var ent = entitySystem.CreateEntity();
+
+ent.AddComponent('TestComponent');
