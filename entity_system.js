@@ -1,7 +1,30 @@
 function JSEntitySystem(updateIntervalMilliseconds) {
+    /*
+      This is the next free Id ready to be assigned to an entity.
+    */
     this.NextFreeId = 0;
+    
+    /*
+      The interval to use for the setInterval function.
+    */
     this.UpdateIntervalMilliseconds = updateIntervalMilliseconds;
+    
+    /*
+      The variable used to hold the scope of the JSEntitySystem function.
+    */
     var engine = this;
+    
+    this.MousePos = new V2();
+    
+    /*
+      The jQuery callback used for the mouse movement callback and grab the latest mouse coordinates.
+    */
+    $(document).ready(function() {
+       $(document).mousemove(function(e) {
+          engine.MousePos.X = e.pageX;
+          engine.MousePos.Y = e.pageY;
+       })}); 
+    
     /*
     The component metadata collection.
     keyed on the componentName, toLowered
@@ -20,12 +43,12 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     this.Components = { };
     
     /*
-      Datas is an associative object for holding data.
+      Datas is a map for holding data.
     */
     this.Datas = { };
     
     /*
-      Entities is an associative object for holding entities.
+      Entities is a map for holding entities.
     */
     this.Entities = { };
     
@@ -34,6 +57,9 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     */    
     this.EntityUpdateList = [];
     
+    /*
+      The factory for the Component methods.
+    */
     this.Component = function(assigned, removed, update, render) {
     	this.Assigned = assigned;
     	this.Removed = removed;
@@ -41,6 +67,9 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     	this.Render = render;
     }
     
+    /*
+      Registers a Component by name in the Components map.
+    */
     this.RegisterComponent = function(componentName, component, requiredComponents, requiredData) {
     	engine.Components[componentName] = {
     		ComponentName : componentName,
@@ -50,7 +79,10 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     	};
     }
     
-    this.AddComponent = function(entity, componentName) {
+    /*
+      Adds a component to the entity passed in.
+    */
+    this.AddComponentWithRequirements = function(entity, componentName) {
     	var component = engine.Components[componentName];
     	var requiredData = component.RequiredData;
     	var requiredComponents = component.RequiredComponents;
@@ -62,7 +94,7 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     	
     	for (var key in component.RequiredComponents) {
     		if (typeof key === 'String' && !(key in entity.Components)) {
-    			engine.AddComponent(entity, key);
+    			engine.AddComponentWithRequirements(entity, key);
     		}
     	}
     	
@@ -97,23 +129,24 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     	this.UpdateComponents = [];
     	
         this.AddComponent = function(componentName) {
-    		if (!(componentName in this.Components)) {
+    		if (!(componentName in self.Components)) {
     			//recursively add components here.
     			//make sure to add each components required data here as well.
-    			engine.AddComponent(this, componentName);
+    			engine.AddComponentWithRequirements(self, componentName);
     		}
     	};
         
         this.RemoveComponent = function(componentName) {
-            if (componentName in this.Components) {
-                delete this.Components[componentName];
+            if (componentName in self.Components) {
+                self.Components[componentName].Methods.RemoveComponent(self, engine.LastUpdateTime);
+                delete self.Components[componentName];
             }
         };
     	
     	this.Update = function(gameTime) {
     		var i = 0;
-    		for (i = 0; i < this.UpdateComponents.length; i++) {
-    			this.UpdateComponents[i].Methods.Update(self, gameTime);
+    		for (i = 0; i < self.UpdateComponents.length; i++) {
+    			self.UpdateComponents[i].Methods.Update(self, gameTime);
     		}
     	};
     	
@@ -142,7 +175,7 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     }
     
     this.Update = function(gameTime) {
-        var i;
+        var i = 0;
         for(i = 0; i < engine.EntityUpdateList.length; i++) {
             engine.EntityUpdateList[i].Update(gameTime);
         }
@@ -173,31 +206,64 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     }
 }
 
-var entitySystem = new JSEntitySystem(32);
-
-entitySystem.RegisterComponent('TestComponent',
-    new entitySystem.Component(function(entity, gameTime) {
-                        //assigned
+$(function() {
+    var entitySystem = new JSEntitySystem(32);
+    
+    //TODO: This 'TestComponent' should be reworked into a 'FollowMouse' component that takes an element reference in its Datas.
+    entitySystem.RegisterComponent('TestComponent',
+        new entitySystem.Component(function(entity, gameTime) {
+                            //assigned
         				},
-        			function(entity, gameTime) {
-                        //removed
+            			function(entity, gameTime) {
+                            //removed
         				},
-        			function(entity, gameTime) {
-                        //update
-                        if (typeof entity.counter === 'undefined') {
-                            entity.counter = 0;
-                        }
-                        entity.counter++;
-                        $('title').html(gameTime + " " + entity.counter);
+            			function(entity, gameTime) {
+                            //update
+                            if (typeof entity.counter === 'undefined') {
+                                entity.counter = 0;
+                            }
+                            
+                            entity.counter++;
+                            
+                            var div = $('#jsDiv' + entity.Datas.div);
+                            var divPos = div.position();
+                            
+                            //A -> B :: B - A
+                            var currentPos = new V2(divPos.left, divPos.top);
+                            
+                            var toMouse = entitySystem.MousePos
+                                                      .Sub(currentPos)
+                                                      .Normalize()
+                                                      .Multiply(entity.Datas.distanceFromUpperLeft);
+                            
+                            toMouse = toMouse.Add(currentPos);
+                            div.css('left', toMouse.X);
+                            div.css('top', toMouse.Y);
+                            
         				},
-        			function(entity, gameTime) {
-                        //render
-        			}),
-            	[],
-                []);
-
-entitySystem.StartUpdating();
-
-var ent = entitySystem.CreateEntity();
-
-ent.AddComponent('TestComponent');
+            			function(entity, gameTime) {
+                            //render
+            			}),
+                	[],
+                    []);
+    
+    (function() {
+        var i = 0;
+        
+        for (i = 0; i < 100; i++) {
+            (function() {
+                var ent = entitySystem.CreateEntity();    
+                ent.Datas.distanceFromUpperLeft = (i + 1) / 10;
+                
+                $('body').append($('<div id="jsDiv' + i + '">a</div>'));
+                
+                $('#jsDiv' + i).css('position', 'absolute');
+                ent.Datas.div = i;
+                
+                ent.AddComponent('TestComponent');
+            })();
+        }
+    })();
+    
+    entitySystem.StartUpdating();
+});
