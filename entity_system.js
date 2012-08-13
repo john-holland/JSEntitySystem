@@ -307,7 +307,7 @@ $(function() {
     (function() {
         var i = 0;
         
-        for (i = 0; i < 250; i++) {
+        for (i = 0; i < 25; i++) {
             (function() {
                 var newDiv = $('<div>hey guy</div>');
                 var ent = entitySystem.CreateEntity();    
