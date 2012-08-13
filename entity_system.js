@@ -104,8 +104,6 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     */
     this.AddComponentWithRequirements = function(entity, componentName) {
     	var component = engine.Components[componentName];
-    	var requiredData = component.RequiredData;
-    	var requiredComponents = component.RequiredComponents;
     	
     	if (!(componentName in entity.Components)) {
     		entity.Components[componentName] = engine.Components[componentName];
@@ -120,9 +118,12 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     	
     	for (var key in component.RequiredData) {
     		if (typeof key === 'String' && !(key in entity.Datas)) {
-    			entity.Datas[key] = component.RequiredData[key];
+                //TODO: Implement required data factory. See TODO at top of class.
+        		  throw new Error("Entity does not have data: " + key + ", required by component: " + componentName);
     		}
     	}
+        
+        engine.Components[componentName].Methods.Assigned(entity, engine.LastUpdateTime);
     }
     
     /*
@@ -207,10 +208,31 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     this.GameStart = (new Date()).getMilliseconds();
     this.LastUpdateTime = this.GameStart;
     
+    this.FrameCountThisSecond = 0;
+    this.LastSecondTime = 0;
+    
     this.IntervalUpdateFunc = function() {
         var currentTime = (new Date()).getMilliseconds();
+        var updateDelta = currentTime - engine.LastUpdateTime;
+
         
-        engine.Update(currentTime - engine.LastUpdateTime);
+        //TODO: HACK: This sometimes comes out as a value ~-361 which... is wrong.
+        //As far as I know, javascript isn't capable of time travel...
+        if (updateDelta < 0) {
+            updateDelta = engine.UpdateIntervalMilliseconds;
+        }
+        
+        engine.LastSecondTime += updateDelta;
+        
+        if (engine.LastSecondTime > 1000) {
+            engine.LastSecondTime -= 1000;
+            $('#diagDiv').text("FPS: " + engine.FrameCountThisSecond);
+            engine.FrameCountThisSecond = 0;
+        }
+        
+        engine.FrameCountThisSecond++;
+        
+        engine.Update(updateDelta);
         
         engine.LastUpdateTime = currentTime;
     }
@@ -230,60 +252,72 @@ function JSEntitySystem(updateIntervalMilliseconds) {
 }
 
 $(function() {
-    var entitySystem = new JSEntitySystem(32);
+    var entitySystem = new JSEntitySystem(16);
     
     //TODO: This 'TestComponent' should be reworked into a 'FollowMouse' component that takes an element reference in its Datas.
-    entitySystem.RegisterComponent('TestComponent',
+    entitySystem.RegisterComponent('FollowMouse',
         new entitySystem.Component(function(entity, gameTime) {
                             //assigned
+                            entity.Datas.ElementToMove.css('position', 'absolute');
+                            entity.Datas.ElementToMove.css('width','2em');
         				},
             			function(entity, gameTime) {
                             //removed
         				},
             			function(entity, gameTime) {
                             //update
-                            if (typeof entity.counter === 'undefined') {
-                                entity.counter = 0;
+                            
+                            if (typeof entity.Datas.CurrentPos === 'undefined') {
+                                entity.Datas.CurrentPos = new V2();
+                                entity.Datas.ToMouse = new V2();
                             }
                             
-                            entity.counter++;
-                            
-                            var div = $('#jsDiv' + entity.Datas.div);
+                            var div = entity.Datas.ElementToMove;
                             var divPos = div.position();
                             
                             //A -> B :: B - A
-                            var currentPos = new V2(divPos.left, divPos.top);
+                            var currentPos = entity.Datas.CurrentPos.Init(divPos.left, divPos.top);
+                            var toMouse = entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos)
+                                                              .Sub(currentPos);
                             
-                            var toMouse = entitySystem.MousePos
-                                                      .Sub(currentPos)
-                                                      .Normalize()
-                                                      .Multiply(entity.Datas.distanceFromUpperLeft);
+                            if (toMouse.Length() < 50) {
+                                return;
+                            }
                             
-                            toMouse = toMouse.Add(currentPos);
+                            toMouse.Normalize()
+                                   .Multiply(entity.Datas.MovementSpeed * (gameTime / 1000) * 10);
+                            
+                            var rotation = Math.atan2(toMouse.Y, toMouse.X);
+                            
+                            toMouse.Add(currentPos);
+                            
+                            //div.css({ WebkitTransform: 'rotate(' + 0 + 'rad)'});
                             div.css('left', toMouse.X);
                             div.css('top', toMouse.Y);
-                            
+                            //div.text(toMouse.X + " " + toMouse.Y);
+                            entity.Datas.Rotation += 4;
+                            div.css({ WebkitTransform: 'rotate(' + rotation + 'rad)'});
         				},
             			function(entity, gameTime) {
                             //render
             			}),
                 	[],
-                    []);
+                    ['MovementSpeed', 'ElementToMove']);
     
     (function() {
         var i = 0;
         
-        for (i = 0; i < 100; i++) {
+        for (i = 0; i < 250; i++) {
             (function() {
+                var newDiv = $('<div>hey guy</div>');
                 var ent = entitySystem.CreateEntity();    
-                ent.Datas.distanceFromUpperLeft = (i + 1) / 10;
+                ent.Datas.MovementSpeed = i + 1;
                 
-                $('body').append($('<div id="jsDiv' + i + '">a</div>'));
+                ent.Datas.ElementToMove = newDiv.appendTo($('body'));
                 
-                $('#jsDiv' + i).css('position', 'absolute');
-                ent.Datas.div = i;
+                ent.AddComponent('FollowMouse');
                 
-                ent.AddComponent('TestComponent');
+                ent.Datas.Rotation = 0;
             })();
         }
     })();
