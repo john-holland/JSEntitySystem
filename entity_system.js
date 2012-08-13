@@ -1,3 +1,23 @@
+/*
+  A simple entity system with an entity centric component / data model.
+  
+  TODO: 
+    -Need to find a dependency injection system for components.
+    -Need to think through data factories, probably should something like:
+        JSEntitySystem.Datas holds a collection of primitive values, object values or functions.
+        When a Component gets added, the system should look at the Datas collection for the value it should provide.
+        If the system sees the Datas["requestedData"] in question is a primitive or object, it simply copies that in.
+        If the system sees the Datas["requestedData"] in question is a function however, it should call that function.
+        This adds the edge case of having to get around the need to put a function into Datas["requestedData"],
+        this however can be surpassed by wrapping the function you would like in the Datas collection in another function:
+            Datas["requestedData"] = function() { return function() { return "ouch, syntax heavy :("; }};
+        I could make a factory function to act as a wrapper:
+            Datas["requestedData"] = engine.DataFunction(function() { return "slightly better? I don't know really." });
+        This could then be checked against by:
+            var isDataFunction = (Datas["requestedData"].constructor === JSEntitySystem.DataFunction);
+        Then retrieved:
+            return Datas["requestedData"].wrappedFunction;
+*/
 function JSEntitySystem(updateIntervalMilliseconds) {
     /*
       This is the next free Id ready to be assigned to an entity.
@@ -105,7 +125,9 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     	}
     }
     
-    //May have to make a CreateEntity function.
+    /*
+      The Entity factory method used by the engine to make new entities.
+    */
     this.Entity = function(idToUse) {
         var self = this;
         
@@ -128,6 +150,7 @@ function JSEntitySystem(updateIntervalMilliseconds) {
         
     	this.UpdateComponents = [];
     	
+        //Adds a component and any dependencies.
         this.AddComponent = function(componentName) {
     		if (!(componentName in self.Components)) {
     			//recursively add components here.
