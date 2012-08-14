@@ -270,6 +270,14 @@ $(function() {
                             if (typeof entity.Datas.CurrentPos === 'undefined') {
                                 entity.Datas.CurrentPos = new V2();
                                 entity.Datas.ToMouse = new V2();
+                                
+                                entity.Datas.Counter = 0;
+                            }
+                            
+                            entity.Datas.Counter += 0.1;
+                            
+                            if (entity.Datas.Counter > 1000) {
+                                entity.Datas.Counter = 0;
                             }
                             
                             var div = entity.Datas.ElementToMove;
@@ -279,24 +287,22 @@ $(function() {
                             var currentPos = entity.Datas.CurrentPos.Init(divPos.left, divPos.top);
                             var toMouse = entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos)
                                                               .Sub(currentPos);
-                            
-                            if (toMouse.Length() < 50) {
-                                return;
+                            var speedModifier = 1;
+                            if (toMouse.Length() < 20) {
+                                speedModifier = 0.1;
                             }
                             
                             toMouse.Normalize()
-                                   .Multiply(entity.Datas.MovementSpeed * (gameTime / 1000) * 10);
+                                   .Multiply(entity.Datas.MovementSpeed * (gameTime / 1000) * 5 * (5 * (Math.sin(entity.Datas.Counter) + 0.7)) * speedModifier);
                             
                             var rotation = Math.atan2(toMouse.Y, toMouse.X);
                             
                             toMouse.Add(currentPos);
                             
-                            //div.css({ WebkitTransform: 'rotate(' + 0 + 'rad)'});
                             div.css('left', toMouse.X);
                             div.css('top', toMouse.Y);
-                            //div.text(toMouse.X + " " + toMouse.Y);
                             entity.Datas.Rotation += 4;
-                            div.css({ WebkitTransform: 'rotate(' + rotation + 'rad)'});
+                            //div.css({ WebkitTransform: 'rotate(' + rotation + 'rad)'});
         				},
             			function(entity, gameTime) {
                             //render
@@ -305,15 +311,34 @@ $(function() {
                     ['MovementSpeed', 'ElementToMove']);
     
     (function() {
+        var typedYet = false;
+        $(document).ready(function () {
+            $(window).keydown(function(args) {
+                if (typedYet) {
+                    $('div[id=getsMoved]').text(function(index, text) {
+                        return text + String.fromCharCode(args.which);  
+                    });
+                } else {
+                    $('div[id=getsMoved]').text(function(index, text) {
+                        return String.fromCharCode(args.which);  
+                    });
+                    typedYet = true;
+                }
+                
+            });
+        })
+        
         var i = 0;
         
-        for (i = 0; i < 25; i++) {
+        for (i = 0; i < 50; i++) {
             (function() {
-                var newDiv = $('<div>hey guy</div>');
-                var ent = entitySystem.CreateEntity();    
-                ent.Datas.MovementSpeed = i + 1;
+                var ent = entitySystem.CreateEntity();
+                
+                var newDiv = $('<div id="getsMoved"><img width="134" height="115" src="http://upload.wikimedia.org/wikipedia/commons/2/2c/Rotating_earth_%28large%29.gif"></img></div>');
                 
                 ent.Datas.ElementToMove = newDiv.appendTo($('body'));
+                
+                ent.Datas.MovementSpeed = i + 10;
                 
                 ent.AddComponent('FollowMouse');
                 
