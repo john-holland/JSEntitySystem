@@ -295,12 +295,6 @@ $(function() {
                             //assigned
                             entity.Datas.ElementToMove.css('position', 'absolute');
                             entity.Datas.ElementToMove.css('width','2em');
-        				},
-            			function(entity, gameTime) {
-                            //removed
-        				},
-            			function(entity, gameTime) {
-                            //update
                             
                             //if the current position is defined
                             if (typeof entity.Datas.Position !== 'undefined') {
@@ -317,15 +311,13 @@ $(function() {
                             
                             if (typeof entity.Datas.ToMouse === 'undefined') {
                                 entity.Datas.ToMouse = new V2();
-                                
-                                entity.Datas.Counter = 0;
                             }
-                            
-                            entity.Datas.Counter += 0.1;
-                            
-                            if (entity.Datas.Counter > 1000) {
-                                entity.Datas.Counter = 0;
-                            }
+        				},
+            			function(entity, gameTime) {
+                            //removed
+        				},
+            			function(entity, gameTime) {
+                            //update
                             
                             var div = entity.Datas.ElementToMove;
                             var divPos = div.position();
@@ -350,6 +342,7 @@ $(function() {
                                                                   .Sub(currentPos);
                                                                   
                                     if (toMouse.Length() < 40) {
+                                        entity.Datas.Speed = 0;
                                         return;
                                     }
                                 } else {
@@ -448,7 +441,7 @@ $(function() {
         var bodyElem = $('body');
         
         var i = 0;
-        for (i = 0; i < 150; i++) {
+        for (i = 0; i < 100; i++) {
             (function() {
                 var ent = entitySystem.CreateEntity();
                 
