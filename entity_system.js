@@ -34,7 +34,18 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     */
     var engine = this;
     
+    /*
+      The MousePos is the current V2 of the mouse.
+    */
     this.MousePos = new V2();
+    
+    /*
+      Currently, the engine uses HTML elements to render, so we don't really need this call to be made.
+      When we switch over to canvas rendering, this should be switched to true, 
+      and really
+      TODO: Elements should have individual ShouldRender bools.
+    */
+    this.ShouldRender = false;
     
     /*
       The jQuery callback used for the mouse movement callback and grab the latest mouse coordinates.
@@ -110,16 +121,18 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     		entity.UpdateComponents.push(engine.Components[componentName]);
     	}
     	
-    	for (var key in component.RequiredComponents) {
-    		if (typeof key === 'String' && !(key in entity.Components)) {
-    			engine.AddComponentWithRequirements(entity, key);
+        var i = 0;
+    	for (; i < component.RequiredComponents.length; i++) {
+    		if (!(component.RequiredComponents[i] in entity.Components)) {
+    			engine.AddComponentWithRequirements(entity, component.RequiredComponents[i]);
     		}
     	}
     	
-    	for (var key in component.RequiredData) {
-    		if (typeof key === 'String' && !(key in entity.Datas)) {
+        i = 0;
+        for (; i < component.RequiredData.length; i++) {
+    		if (!(component.RequiredData[i] in entity.Datas)) {
                 //TODO: Implement required data factory. See TODO at top of class.
-        		  throw new Error("Entity does not have data: " + key + ", required by component: " + componentName);
+        		  throw new Error("Entity does not have data: " + component.RequiredData[i] + ", required by component: " + componentName);
     		}
     	}
         
@@ -173,6 +186,13 @@ function JSEntitySystem(updateIntervalMilliseconds) {
     			self.UpdateComponents[i].Methods.Update(self, gameTime);
     		}
     	};
+        
+        this.Render = function(gameTime) {
+            var i = 0;
+            for (i = 0; i < self.UpdateComponents.length; i++) {
+                self.UpdateComponents[i].Methods.Render(self, gameTime);
+            }
+        }
     	
     	engine.Entities[this.Id] = this;
         engine.EntityUpdateList.push(this);
@@ -202,6 +222,14 @@ function JSEntitySystem(updateIntervalMilliseconds) {
         var i = 0;
         for(i = 0; i < engine.EntityUpdateList.length; i++) {
             engine.EntityUpdateList[i].Update(gameTime);
+        }
+        
+        if (!engine.ShouldRender) {
+            return;
+        }
+        
+        for (i = 0; i < engine.EntityUpdateList.length; i++) {
+            engine.EntityUpdateList[i].Render(gameTime);
         }
     }
     
@@ -249,10 +277,17 @@ function JSEntitySystem(updateIntervalMilliseconds) {
             delete engine.UpdateIntervalKey;
         }
     }
+    
+    /*
+      Data should be passed in as json objects.
+    */
+    this.AddData = function(dataName, data) {
+        engine.Datas[dataName] = data;
+    }
 }
 
 $(function() {
-    var entitySystem = new JSEntitySystem(16);
+    var entitySystem = new JSEntitySystem(32);
     
     //TODO: This 'TestComponent' should be reworked into a 'FollowMouse' component that takes an element reference in its Datas.
     entitySystem.RegisterComponent('FollowMouse',
@@ -267,8 +302,20 @@ $(function() {
             			function(entity, gameTime) {
                             //update
                             
-                            if (typeof entity.Datas.CurrentPos === 'undefined') {
-                                entity.Datas.CurrentPos = new V2();
+                            //if the current position is defined
+                            if (typeof entity.Datas.Position !== 'undefined') {
+                                //and if the original position is undefined, then we can copy over this current position
+                                if (typeof entity.Datas.OriginalPos === 'undefined') {
+                                    entity.Datas.OriginalPos = entity.Datas.Position.Copy();
+                                    entity.Datas.OriginalSpeed = entity.Datas.Speed;
+                                }
+                            }
+                            
+                            if (typeof entity.Datas.Position === 'undefined') {
+                                entity.Datas.Position = new V2();
+                            }
+                            
+                            if (typeof entity.Datas.ToMouse === 'undefined') {
                                 entity.Datas.ToMouse = new V2();
                                 
                                 entity.Datas.Counter = 0;
@@ -284,31 +331,99 @@ $(function() {
                             var divPos = div.position();
                             
                             //A -> B :: B - A
-                            var currentPos = entity.Datas.CurrentPos.Init(divPos.left, divPos.top);
+                            var currentPos = entity.Datas.Position.Init(divPos.left, divPos.top);
                             var toMouse = entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos)
                                                               .Sub(currentPos);
                             var speedModifier = 1;
-                            if (toMouse.Length() < 20) {
-                                speedModifier = 0.1;
+                            var lengthToMouse = toMouse.Length();
+                            
+                            var sensingDistance = 400;
+                            
+                            if (lengthToMouse < 20) {
+                                entity.Datas.Speed = 0.1;
+                            } else if (lengthToMouse < sensingDistance) {
+                                entity.Datas.Speed = entity.Datas.OriginalSpeed * (lengthToMouse / sensingDistance);
+                            } else {
+                                if (typeof entity.Datas.OriginalPos !== 'undefined') {
+                                    entity.Datas.Speed = entity.Datas.OriginalSpeed;
+                                    toMouse = entity.Datas.ToMouse.InitFromV2(entity.Datas.OriginalPos)
+                                                                  .Sub(currentPos);
+                                                                  
+                                    if (toMouse.Length() < 40) {
+                                        return;
+                                    }
+                                } else {
+                                    entity.Datas.Speed = 0;
+                                }
                             }
                             
-                            toMouse.Normalize()
-                                   .Multiply(entity.Datas.MovementSpeed * (gameTime / 1000) * 5 * (5 * (Math.sin(entity.Datas.Counter) + 0.7)) * speedModifier);
+                            //toMouse.Normalize()
+                            //       .Multiply(entity.Datas.Speed * (gameTime / 1000) * 5 * speedModifier);// * (5 * (Math.sin(entity.Datas.Counter) + 0.7)));
+                            entity.Datas.Rotation = Math.atan2(toMouse.Y, toMouse.X);
+                            //var rotation = Math.atan2(toMouse.Y, toMouse.X);
                             
-                            var rotation = Math.atan2(toMouse.Y, toMouse.X);
+                            //toMouse.Add(currentPos);
                             
-                            toMouse.Add(currentPos);
                             
-                            div.css('left', toMouse.X);
-                            div.css('top', toMouse.Y);
-                            entity.Datas.Rotation += 4;
                             //div.css({ WebkitTransform: 'rotate(' + rotation + 'rad)'});
         				},
             			function(entity, gameTime) {
                             //render
             			}),
+                	['MovementUpdater'],
+                    ['Speed', 'ElementToMove']);
+                    
+    entitySystem.RegisterComponent('RotateClockwise',
+        new entitySystem.Component(function(entity, gameTime) {
+                            //assigned
+                            //entity.Datas.ElementToMove.css('width','0em');
+                            //entity.Datas.ElementToMove.css("-webkit-transform-origin", "50% 50%" );
+            			},
+            			function(entity, gameTime) {
+                            //removed
+        				},
+            			function(entity, gameTime) {
+                            //update
+                            
+                            if (typeof entity.Datas.Rotation === 'undefined') {                                
+                                entity.Datas.Rotation = 0;
+                            }
+                            
+                            entity.Datas.Rotation += 100 * (gameTime / 1000);
+                            
+                            entity.Datas.ElementToMove.rotate(entity.Datas.Rotation);
+        				},
+            			function(entity, gameTime) {
+                            //render
+            			}),
                 	[],
-                    ['MovementSpeed', 'ElementToMove']);
+                    ['ElementToMove']);
+                    
+    entitySystem.RegisterComponent('MovementUpdater',
+        new entitySystem.Component(function(entity, gameTime) {
+            //assigned
+        },
+        function(entity, gameTime) {
+            //removed
+        },
+        function(entity, gameTime) {
+            //update
+            
+            var rot = entity.Datas.Rotation;
+
+            entity.Datas.Heading.Init(Math.cos(rot), Math.sin(rot)).Normalize();
+
+            entity.Datas.Position.Add(entity.Datas.Heading.Multiply(entity.Datas.Speed).Multiply(gameTime / 1000));
+            
+            var div = entity.Datas.ElementToMove;
+            div.css('left', entity.Datas.Position.X);
+            div.css('top', entity.Datas.Position.Y);
+        },
+        function(entity, gameTime) {
+            //render
+        }),
+        [],
+        ['Position', 'Speed', 'Heading', 'ElementToMove']);
     
     (function() {
         var typedYet = false;
@@ -328,17 +443,26 @@ $(function() {
             });
         })
         
-        var i = 0;
+        var docHeight = $(document).height();
+        var docWidth = $(document).width();
+        var bodyElem = $('body');
         
-        for (i = 0; i < 50; i++) {
+        var i = 0;
+        for (i = 0; i < 150; i++) {
             (function() {
                 var ent = entitySystem.CreateEntity();
                 
-                var newDiv = $('<div id="getsMoved"><img width="134" height="115" src="http://upload.wikimedia.org/wikipedia/commons/2/2c/Rotating_earth_%28large%29.gif"></img></div>');
+                var newDiv = $('<div id="getsMoved"><img width="3" height="3" src="star.png"></img></div>');
                 
-                ent.Datas.ElementToMove = newDiv.appendTo($('body'));
+                ent.Datas.ElementToMove = newDiv.appendTo(bodyElem);
                 
-                ent.Datas.MovementSpeed = i + 10;
+                ent.Datas.Speed = 200;//i + 1;
+                ent.Datas.Position = new V2(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
+                
+                newDiv.css('left', ent.Datas.Position.X);
+                newDiv.css('top', ent.Datas.Position.Y);
+                
+                ent.Datas.Heading = new V2();
                 
                 ent.AddComponent('FollowMouse');
                 
