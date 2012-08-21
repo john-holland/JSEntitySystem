@@ -259,8 +259,10 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
         
         if (engine.LastSecondTime > 1000) {
             engine.LastSecondTime -= 1000;
-            $('#diagDiv').text("FPS: " + engine.FrameCountThisSecond);
+            $('#fps').text("FPS: " + engine.FrameCountThisSecond);
             engine.FrameCountThisSecond = 0;
+            
+            $('#entityCount').text("Entity Count: " + engine.EntityUpdateList.length);
         }
         
         engine.FrameCountThisSecond++;
@@ -344,7 +346,11 @@ $(function() {
                             if (lengthToMouse < 20) {
                                 entity.Datas.Speed = 0.1;
                             } else if (lengthToMouse < sensingDistance) {
-                                entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);
+                                if (lengthToMouse < (sensingDistance / 2)) {
+                                    entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.25);
+                                } else {
+                                    entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);   
+                                }
                             } else {
                                 if (typeof entity.Datas.OriginalPos !== 'undefined') {
                                     entity.Datas.Speed = entity.Datas.OriginalSpeed;
@@ -519,17 +525,24 @@ $(function() {
         var i = 0;
         
         //random elements to make.
-        for (i = 0; i < 5000; i++) {
-            createNewElement(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
-        }
+//        for (i = 0; i < 4000; i++) {
+//            createNewElement(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
+//        }
         
-        var elementsToMake = 0;
-        for (i = 0; i < elementsToMake; i++) {
-            createNewElement(docWidth / 2, docHeight * (i / elementsToMake));
-        }
-        
-        for (i = 0; i < elementsToMake; i++) {
-            createNewElement(docWidth * (i / elementsToMake), docHeight / 2);
+        //0.25 0.5 0.75
+        //1/4 1/2 3/4
+        //break into column count = 10 columns...
+        var elementsToMake = 10;
+        var divisor = 0;
+        var maxDivisions = 50;
+        for (divisor = 0; divisor < (maxDivisions - 1); divisor++) {
+            for (i = 0; i < elementsToMake; i++) {
+                createNewElement(docWidth * ((divisor + 1) / maxDivisions), docHeight * (i / elementsToMake));
+            }
+                    
+            for (i = 0; i < elementsToMake; i++) {
+                createNewElement(docWidth * (i / elementsToMake), docHeight * ((divisor + 1) / maxDivisions));
+            }
         }
     })();
     
