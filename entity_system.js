@@ -287,7 +287,7 @@ function JSEntitySystem(updateIntervalMilliseconds) {
 }
 
 $(function() {
-    var entitySystem = new JSEntitySystem(32);
+    var entitySystem = new JSEntitySystem(16);
     
     //TODO: This 'TestComponent' should be reworked into a 'FollowMouse' component that takes an element reference in its Datas.
     entitySystem.RegisterComponent('FollowMouse',
@@ -334,7 +334,7 @@ $(function() {
                             if (lengthToMouse < 20) {
                                 entity.Datas.Speed = 0.1;
                             } else if (lengthToMouse < sensingDistance) {
-                                entity.Datas.Speed = entity.Datas.OriginalSpeed * (lengthToMouse / sensingDistance);
+                                entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);
                             } else {
                                 if (typeof entity.Datas.OriginalPos !== 'undefined') {
                                     entity.Datas.Speed = entity.Datas.OriginalSpeed;
@@ -343,6 +343,7 @@ $(function() {
                                                                   
                                     if (toMouse.Length() < 40) {
                                         entity.Datas.Speed = 0;
+                                        entity.Datas.Position.InitFromV2(entity.Datas.OriginalPos);
                                         return;
                                     }
                                 } else {
@@ -439,18 +440,15 @@ $(function() {
         var docHeight = $(document).height();
         var docWidth = $(document).width();
         var bodyElem = $('body');
-        
-        var i = 0;
-        for (i = 0; i < 100; i++) {
-            (function() {
+        var createNewElement = (function(x, y) {
                 var ent = entitySystem.CreateEntity();
                 
                 var newDiv = $('<div id="getsMoved"><img width="3" height="3" src="star.png"></img></div>');
                 
                 ent.Datas.ElementToMove = newDiv.appendTo(bodyElem);
                 
-                ent.Datas.Speed = 200;//i + 1;
-                ent.Datas.Position = new V2(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
+                ent.Datas.Speed = 1000;//i + 1;
+                ent.Datas.Position = new V2(x, y);
                 
                 newDiv.css('left', ent.Datas.Position.X);
                 newDiv.css('top', ent.Datas.Position.Y);
@@ -460,7 +458,21 @@ $(function() {
                 ent.AddComponent('FollowMouse');
                 
                 ent.Datas.Rotation = 0;
-            })();
+            });
+        var i = 0;
+        
+        //random elements to make.
+        for (i = 0; i < 10; i++) {
+            createNewElement(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
+        }
+        
+        var elementsToMake = 100;
+        for (i = 0; i < elementsToMake; i++) {
+            createNewElement(docWidth / 2, docHeight * (i / elementsToMake));
+        }
+        
+        for (i = 0; i < elementsToMake; i++) {
+            createNewElement(docWidth * (i / elementsToMake), docHeight / 2);
         }
     })();
     
