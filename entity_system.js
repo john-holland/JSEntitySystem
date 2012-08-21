@@ -18,7 +18,7 @@
         Then retrieved:
             return Datas["requestedData"].wrappedFunction;
 */
-function JSEntitySystem(updateIntervalMilliseconds) {
+function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     /*
       This is the next free Id ready to be assigned to an entity.
     */
@@ -45,13 +45,13 @@ function JSEntitySystem(updateIntervalMilliseconds) {
       and really
       TODO: Elements should have individual ShouldRender bools.
     */
-    this.ShouldRender = false;
+    this.ShouldRender = true;
     
     /*
       The jQuery callback used for the mouse movement callback and grab the latest mouse coordinates.
     */
-    $(document).ready(function() {
-       $(document).mousemove(function(e) {
+    $("#myCanvas").ready(function() {
+       $("#myCanvas").mousemove(function(e) {
           engine.MousePos.X = e.pageX;
           engine.MousePos.Y = e.pageY;
        })}); 
@@ -228,6 +228,11 @@ function JSEntitySystem(updateIntervalMilliseconds) {
             return;
         }
         
+        var docHeight = $(document).height();
+        var docWidth = $(document).width();
+        canvasContext.fillStyle = fillColor;
+        canvasContext.fillRect(0,0,docWidth,docHeight);
+        
         for (i = 0; i < engine.EntityUpdateList.length; i++) {
             engine.EntityUpdateList[i].Render(gameTime);
         }
@@ -287,14 +292,19 @@ function JSEntitySystem(updateIntervalMilliseconds) {
 }
 
 $(function() {
-    var entitySystem = new JSEntitySystem(16);
+    var canvasElement = $("#myCanvas");
+    var canvasContext = canvasElement[0].getContext("2d");
+    var entitySystem = new JSEntitySystem(16, canvasContext, "#000000");
     
     //TODO: This 'TestComponent' should be reworked into a 'FollowMouse' component that takes an element reference in its Datas.
     entitySystem.RegisterComponent('FollowMouse',
         new entitySystem.Component(function(entity, gameTime) {
                             //assigned
-                            entity.Datas.ElementToMove.css('position', 'absolute');
-                            entity.Datas.ElementToMove.css('width','2em');
+                            
+                            if (typeof entity.Datas.ElementToMove !== 'undefined') {
+                                entity.Datas.ElementToMove.css('position', 'absolute');
+                                entity.Datas.ElementToMove.css('width','2em');
+                            }
                             
                             //if the current position is defined
                             if (typeof entity.Datas.Position !== 'undefined') {
@@ -319,11 +329,11 @@ $(function() {
             			function(entity, gameTime) {
                             //update
                             
-                            var div = entity.Datas.ElementToMove;
-                            var divPos = div.position();
+                            //var div = entity.Datas.ElementToMove;
+                            //var divPos = div.position();
                             
                             //A -> B :: B - A
-                            var currentPos = entity.Datas.Position.Init(divPos.left, divPos.top);
+                            var currentPos = entity.Datas.Position;//.Init(divPos.left, divPos.top);
                             var toMouse = entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos)
                                                               .Sub(currentPos);
                             var speedModifier = 1;
@@ -365,7 +375,7 @@ $(function() {
                             //render
             			}),
                 	['MovementUpdater'],
-                    ['Speed', 'ElementToMove']);
+                    ['Speed']);
                     
     entitySystem.RegisterComponent('RotateClockwise',
         new entitySystem.Component(function(entity, gameTime) {
@@ -385,13 +395,15 @@ $(function() {
                             
                             entity.Datas.Rotation += 100 * (gameTime / 1000);
                             
-                            entity.Datas.ElementToMove.rotate(entity.Datas.Rotation);
+                            if (typeof entity.Datas.ElementToMove !== 'undefined') {
+                                entity.Datas.ElementToMove.rotate(entity.Datas.Rotation);
+                            }
         				},
             			function(entity, gameTime) {
                             //render
             			}),
                 	[],
-                    ['ElementToMove']);
+                    []);
                     
     entitySystem.RegisterComponent('MovementUpdater',
         new entitySystem.Component(function(entity, gameTime) {
@@ -409,15 +421,46 @@ $(function() {
 
             entity.Datas.Position.Add(entity.Datas.Heading.Multiply(entity.Datas.Speed).Multiply(gameTime / 1000));
             
-            var div = entity.Datas.ElementToMove;
-            div.css('left', entity.Datas.Position.X);
-            div.css('top', entity.Datas.Position.Y);
+            if (typeof entity.Datas.ElementToMove !== 'undefined') {
+                var div = entity.Datas.ElementToMove;
+                div.css('left', entity.Datas.Position.X);
+                div.css('top', entity.Datas.Position.Y);
+            }
         },
         function(entity, gameTime) {
             //render
         }),
         [],
-        ['Position', 'Speed', 'Heading', 'ElementToMove']);
+        ['Position', 'Speed', 'Heading']);
+        
+    var toRadians = Math.PI/180;
+    entitySystem.RegisterComponent('ImageCanvasRenderer', 
+        new entitySystem.Component(function(entity, gameTime) {
+            //assigned
+        },
+        function(entity, gameTime) {
+            //removed
+        },
+        function(entity, gameTime) {
+            //update
+        },
+        function(entity, gameTime) {
+            //render
+            
+            var context = entity.Datas.ContextToRenderOn;
+            
+            context.save();
+ 
+        	context.translate(entity.Datas.Position.X, entity.Datas.Position.Y);
+         
+        	context.rotate(entity.Datas.Position.Rotation);
+         
+        	context.drawImage(entity.Datas.ImageToRender, -(entity.Datas.ImageToRender.width/2), -(entity.Datas.ImageToRender.height/2));
+            
+            context.restore();
+        }),
+        [],
+        ['Position', 'Rotation', 'ImageToRender', 'ContextToRenderOn']);
     
     (function() {
         var typedYet = false;
@@ -435,38 +478,52 @@ $(function() {
                 }
                 
             });
-        })
+        });
+        
         
         var docHeight = $(document).height();
         var docWidth = $(document).width();
+        
+        canvasElement[0].width = $(window).width();
+        canvasElement[0].height = $(window).height();
+        
         var bodyElem = $('body');
+        var image = new Image();
+        image.src = "star.png";
+        
         var createNewElement = (function(x, y) {
                 var ent = entitySystem.CreateEntity();
                 
-                var newDiv = $('<div id="getsMoved"><img width="3" height="3" src="star.png"></img></div>');
+                //var newDiv = $('<div id="getsMoved"><img width="3" height="3" src="star.png"></img></div>');
                 
-                ent.Datas.ElementToMove = newDiv.appendTo(bodyElem);
+                //ent.Datas.ElementToMove = newDiv.appendTo(bodyElem);
                 
                 ent.Datas.Speed = 1000;//i + 1;
                 ent.Datas.Position = new V2(x, y);
                 
-                newDiv.css('left', ent.Datas.Position.X);
-                newDiv.css('top', ent.Datas.Position.Y);
+                //newDiv.css('left', ent.Datas.Position.X);
+                //newDiv.css('top', ent.Datas.Position.Y);
                 
                 ent.Datas.Heading = new V2();
                 
+                ent.Datas.Rotation = 0;
+                
+                ent.Datas.ContextToRenderOn = canvasContext;
+                ent.Datas.ImageToRender = image;
+                
                 ent.AddComponent('FollowMouse');
+                ent.AddComponent('ImageCanvasRenderer');
                 
                 ent.Datas.Rotation = 0;
             });
         var i = 0;
         
         //random elements to make.
-        for (i = 0; i < 10; i++) {
+        for (i = 0; i < 5000; i++) {
             createNewElement(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
         }
         
-        var elementsToMake = 100;
+        var elementsToMake = 0;
         for (i = 0; i < elementsToMake; i++) {
             createNewElement(docWidth / 2, docHeight * (i / elementsToMake));
         }
