@@ -40,6 +40,12 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     this.MousePos = new V2();
     
     /*
+      This array keeps track of touch positions in a multitouch environment
+      MousePos will still be set, but this will be viable if IsOnTouchDevice === true;
+    */
+    this.TouchPositions = new Array();
+    
+    /*
       Currently, the engine uses HTML elements to render, so we don't really need this call to be made.
       When we switch over to canvas rendering, this should be switched to true, 
       and really
@@ -47,14 +53,55 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     */
     this.ShouldRender = true;
     
+    this.IsMouseDown = false;
+    
     /*
       The jQuery callback used for the mouse movement callback and grab the latest mouse coordinates.
     */
     $("#myCanvas").ready(function() {
-       $("#myCanvas").mousemove(function(e) {
+        var canvasElem = $("#myCanvas");
+       canvasElem.mousemove(function(e) {
           engine.MousePos.X = e.pageX;
           engine.MousePos.Y = e.pageY;
-       })}); 
+       });
+       
+       canvasElem.mousedown(function() {
+           engine.IsMouseDown = true;
+       });
+       
+       canvasElem.mouseup(function() {
+           engine.IsMouseDown = false;
+       });
+    });
+       
+    if ('ontouchstart' in document.documentElement) {
+        this.IsOnTouchDevice = true;
+    } else {
+        this.IsOnTouchDevice = false;
+    }
+    
+    //helped out: http://www.codeproject.com/Articles/355230/HTML-5-Canvas-A-Simple-Paint-Program-Touch-and-Mou
+    if (engine.IsOnTouchDevice) {
+        //we're on a touch device.
+        var canvasElement = $("#myCanvas")[0];
+        var updateEngineMousePosFromEventArgs = function(args) {
+            engine.MousePos.X = args.targetTouches[0].pageX;
+            engine.MousePos.Y = args.targetTouches[0].pageY;
+        };
+        canvasElement.addEventListener('touchstart', function (args) {
+            engine.IsMouseDown = true;
+            updateEngineMousePosFromEventArgs(args);
+        }, false);
+        canvasElement.addEventListener('touchmove', function (args) {
+            engine.IsMouseDown = true;
+            updateEngineMousePosFromEventArgs(args);
+            args.preventDefault();
+        }, false);
+        canvasElement.addEventListener('touchend', function (args) {
+            engine.IsMouseDown = false;
+            updateEngineMousePosFromEventArgs(args);
+        }, false);
+    }
     
     /*
     The component metadata collection.
@@ -262,7 +309,7 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
             $('#fps').text("FPS: " + engine.FrameCountThisSecond);
             engine.FrameCountThisSecond = 0;
             
-            $('#entityCount').text("Entity Count: " + engine.EntityUpdateList.length);
+            $('#entityCount').text((engine.IsOnTouchDevice ? "Mobile!" : "") + "Entity Count: " + engine.EntityUpdateList.length);
         }
         
         engine.FrameCountThisSecond++;
@@ -346,12 +393,10 @@ $(function() {
                             if (lengthToMouse < 20) {
                                 entity.Datas.Speed = 0.1;
                             } else if (lengthToMouse < sensingDistance) {
-                                if (lengthToMouse < (sensingDistance / 2)) {
-                                    entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.25);
-                                } else {
-                                    entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);   
-                                }
-                            } else {
+                                entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);
+                            } 
+                            
+                            if (lengthToMouse >= sensingDistance || !entitySystem.IsMouseDown) {
                                 if (typeof entity.Datas.OriginalPos !== 'undefined') {
                                     entity.Datas.Speed = entity.Datas.OriginalSpeed;
                                     toMouse = entity.Datas.ToMouse.InitFromV2(entity.Datas.OriginalPos)
@@ -524,26 +569,25 @@ $(function() {
             });
         var i = 0;
         
+        var amountOfEntitiesToMake = entitySystem.IsOnTouchDevice ? 500 : 2000;
         //random elements to make.
-//        for (i = 0; i < 4000; i++) {
-//            createNewElement(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
-//        }
-        
-        //0.25 0.5 0.75
-        //1/4 1/2 3/4
-        //break into column count = 10 columns...
-        var elementsToMake = 10;
-        var divisor = 0;
-        var maxDivisions = 50;
-        for (divisor = 0; divisor < (maxDivisions - 1); divisor++) {
-            for (i = 0; i < elementsToMake; i++) {
-                createNewElement(docWidth * ((divisor + 1) / maxDivisions), docHeight * (i / elementsToMake));
-            }
-                    
-            for (i = 0; i < elementsToMake; i++) {
-                createNewElement(docWidth * (i / elementsToMake), docHeight * ((divisor + 1) / maxDivisions));
-            }
+        for (i = 0; i < amountOfEntitiesToMake; i++) {
+            createNewElement(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
         }
+
+        
+//        var elementsToMake = 10;
+//        var divisor = 0;
+//        var maxDivisions = 10;
+//        for (divisor = 0; divisor < (maxDivisions - 1); divisor++) {
+//            for (i = 0; i < elementsToMake; i++) {
+//                createNewElement(docWidth * ((divisor + 1) / maxDivisions), docHeight * (i / elementsToMake));
+//            }
+//                    
+//            for (i = 0; i < elementsToMake; i++) {
+//                createNewElement(docWidth * (i / elementsToMake), docHeight * ((divisor + 1) / maxDivisions));
+//            }
+//        }
     })();
     
     entitySystem.StartUpdating();
