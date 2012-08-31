@@ -43,7 +43,7 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
       This array keeps track of touch positions in a multitouch environment
       MousePos will still be set, but this will be viable if IsOnTouchDevice === true;
     */
-    this.TouchPositions = new Array();
+    this.TouchPositions = [];
     
     /*
       Currently, the engine uses HTML elements to render, so we don't really need this call to be made.
@@ -55,54 +55,63 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     
     this.IsMouseDown = false;
     
-    /*
-      The jQuery callback used for the mouse movement callback and grab the latest mouse coordinates.
-    */
-    $("#myCanvas").ready(function() {
-        var canvasElem = $("#myCanvas");
-       canvasElem.mousemove(function(e) {
-          engine.MousePos.X = e.pageX;
-          engine.MousePos.Y = e.pageY;
-       });
-       
-       canvasElem.mousedown(function() {
-           engine.IsMouseDown = true;
-       });
-       
-       canvasElem.mouseup(function() {
-           engine.IsMouseDown = false;
-       });
-    });
-       
-    if ('ontouchstart' in document.documentElement) {
-        this.IsOnTouchDevice = true;
-    } else {
-        this.IsOnTouchDevice = false;
-    }
-    
-    //helped out: http://www.codeproject.com/Articles/355230/HTML-5-Canvas-A-Simple-Paint-Program-Touch-and-Mou
-    if (engine.IsOnTouchDevice) {
-        //we're on a touch device.
-        var canvasElement = $("#myCanvas")[0];
-        var updateEngineMousePosFromEventArgs = function(args) {
-            engine.MousePos.X = args.targetTouches[0].pageX;
-            engine.MousePos.Y = args.targetTouches[0].pageY;
-        };
-        canvasElement.addEventListener('touchstart', function (args) {
-            engine.IsMouseDown = true;
-            updateEngineMousePosFromEventArgs(args);
-        }, false);
-        canvasElement.addEventListener('touchmove', function (args) {
-            engine.IsMouseDown = true;
-            updateEngineMousePosFromEventArgs(args);
-            args.preventDefault();
-        }, false);
-        canvasElement.addEventListener('touchend', function (args) {
-            engine.IsMouseDown = false;
-            updateEngineMousePosFromEventArgs(args);
-        }, false);
-    }
-    
+    //Initialization logic takes place wrapped in a function so that it doesn't interfere with the engine object, unless explicitly meant to.
+    (function() {
+        /*
+          The jQuery callback used for the mouse movement callback and grab the latest mouse coordinates.
+        */
+        $("#myCanvas").ready(function() {
+            var canvasElem = $("#myCanvas");
+           canvasElem.mousemove(function(e) {
+              engine.MousePos.X = e.pageX;
+              engine.MousePos.Y = e.pageY;
+           });
+           
+           canvasElem.mousedown(function() {
+               engine.IsMouseDown = true;
+           });
+           
+           canvasElem.mouseup(function() {
+               engine.IsMouseDown = false;
+           });
+        });
+           
+        if ('ontouchstart' in document.documentElement) {
+            engine.IsOnTouchDevice = true;
+        } else {
+            engine.IsOnTouchDevice = false;
+        }
+        
+        //helped out: http://www.codeproject.com/Articles/355230/HTML-5-Canvas-A-Simple-Paint-Program-Touch-and-Mou
+        if (engine.IsOnTouchDevice) {
+            //we're on a touch device.
+            var canvasElement = $("#myCanvas")[0];
+            var updateEngineMousePosFromEventArgs = function(args) {
+                engine.MousePos.X = args.targetTouches[0].pageX;
+                engine.MousePos.Y = args.targetTouches[0].pageY;
+                                
+                engine.TouchPositions = [];
+                
+                var i = 0;
+                for (i = 0; i < args.targetTouches.length; i++) {
+                    engine.TouchPositions.push(new V2(args.targetTouches[i].pageX, args.targetTouches[i].pageY));
+                }
+            };
+            canvasElement.addEventListener('touchstart', function (args) {
+                engine.IsMouseDown = true;
+                updateEngineMousePosFromEventArgs(args);
+            }, false);
+            canvasElement.addEventListener('touchmove', function (args) {
+                engine.IsMouseDown = true;
+                updateEngineMousePosFromEventArgs(args);
+                args.preventDefault();
+            }, false);
+            canvasElement.addEventListener('touchend', function (args) {
+                engine.IsMouseDown = false;
+                updateEngineMousePosFromEventArgs(args);
+            }, false);
+        }
+    })();
     /*
     The component metadata collection.
     keyed on the componentName, toLowered
@@ -371,6 +380,13 @@ $(function() {
                             if (typeof entity.Datas.ToMouse === 'undefined') {
                                 entity.Datas.ToMouse = new V2();
                             }
+                            
+                            
+                            if (entitySystem.IsOnTouchDevice) {
+                                if (typeof entity.Datas.AveragePos === 'undefined') {
+                                    entity.Datas.AveragePos = new V2();
+                                }
+                            }
         				},
             			function(entity, gameTime) {
                             //removed
@@ -378,23 +394,58 @@ $(function() {
             			function(entity, gameTime) {
                             //update
                             
-                            //var div = entity.Datas.ElementToMove;
-                            //var divPos = div.position();
-                            
                             //A -> B :: B - A
                             var currentPos = entity.Datas.Position;//.Init(divPos.left, divPos.top);
-                            var toMouse = entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos)
-                                                              .Sub(currentPos);
-                            var speedModifier = 1;
-                            var lengthToMouse = toMouse.Length();
                             
-                            var sensingDistance = 400;
+                            var speedModifier = 1;
+                            var lengthToMouse = 10000;
+                            
+                            var sensingDistance = 300;
+                            var sensingDistanceSqr = sensingDistance * sensingDistance;
+                                                        
+                            if (entitySystem.IsOnTouchDevice && entitySystem.TouchPositions.Any()) {
+                                sensingDistance = 200;
+                                sensingDistanceSqr = sensingDistance * sensingDistance;
+                                
+                                //average out the positions of nearby touches and head for that point.                                
+                                var j = 0;
+                                for (j = 0; j < entitySystem.TouchPositions.length; j++) {
+                                    if (j === 0) {
+                                        entity.Datas.AveragePos.InitFromV2(entitySystem.TouchPositions.First());
+                                    }
+                                    
+                                    var touchToMouse = entitySystem.TouchPositions[j].Copy();
+                                    
+                                    touchToMouse.Sub(currentPos);
+                                    
+                                    if (touchToMouse.LengthSqr() < sensingDistanceSqr) {
+                                        //entity.Datas.AveragePos.Add(entitySystem.TouchPositions[j]);
+                                        entity.Datas.ToMouse.InitFromV2(touchToMouse);
+                                    }
+                                }
+//                                
+//                                var divideByAmount = 1;
+//                                if (entitySystem.TouchPositions.length > 1) {
+//                                    divideByAmount = entitySystem.TouchPositions.length;
+//                                }
+                                
+//                                entity.Datas.AveragePos.Divide(divideByAmount);
+//                                if (entityDatas.AveragePos.ToTouchPositions.Any()) {
+//                                    entity.Datas.ToMouse.InitFromV2(entityDatas.AveragePos.ToTouchPositions.First()).Sub(currentPos);
+//                                }
+                            } else {                                
+                                entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos).Sub(currentPos);
+                            }
+                            
+                            var toMouse = entity.Datas.ToMouse;
+                            
+                            lengthToMouse = toMouse.Length();
                             
                             if (lengthToMouse < 20) {
-                                entity.Datas.Speed = 0.1;
+                                entity.Datas.Speed = 0;
                             } else if (lengthToMouse < sensingDistance) {
                                 entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);
-                            } 
+                            }
                             
                             if (lengthToMouse >= sensingDistance || !entitySystem.IsMouseDown) {
                                 if (typeof entity.Datas.OriginalPos !== 'undefined') {
@@ -412,15 +463,8 @@ $(function() {
                                 }
                             }
                             
-                            //toMouse.Normalize()
-                            //       .Multiply(entity.Datas.Speed * (gameTime / 1000) * 5 * speedModifier);// * (5 * (Math.sin(entity.Datas.Counter) + 0.7)));
+                            
                             entity.Datas.Rotation = Math.atan2(toMouse.Y, toMouse.X);
-                            //var rotation = Math.atan2(toMouse.Y, toMouse.X);
-                            
-                            //toMouse.Add(currentPos);
-                            
-                            
-                            //div.css({ WebkitTransform: 'rotate(' + rotation + 'rad)'});
         				},
             			function(entity, gameTime) {
                             //render
@@ -569,7 +613,7 @@ $(function() {
             });
         var i = 0;
         
-        var amountOfEntitiesToMake = entitySystem.IsOnTouchDevice ? 500 : 2000;
+        var amountOfEntitiesToMake = entitySystem.IsOnTouchDevice ? 250 : 2000;
         //random elements to make.
         for (i = 0; i < amountOfEntitiesToMake; i++) {
             createNewElement(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
