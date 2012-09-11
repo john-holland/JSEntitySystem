@@ -1,4 +1,4 @@
-function CellAnimation(imageFile, cellX, cellY, frameCount, framesPerSecond) {
+function CellAnimation(imageFile, cellX, cellY, frameCount, framesPerSecond, continuation) {
     var self = this;
     this.ImageFile = imageFile;
     this.CellX = cellX;
@@ -6,6 +6,9 @@ function CellAnimation(imageFile, cellX, cellY, frameCount, framesPerSecond) {
     this.Delta = (1000 / framesPerSecond);
     this.CurrentFrame = 0;
     this.FrameDelta = 0;
+    
+    this.StartFrame = 0;
+    this.EndFrame = frameCount;
     
     /* The current image  */
     this.CurrentImage = null;
@@ -60,6 +63,11 @@ function CellAnimation(imageFile, cellX, cellY, frameCount, framesPerSecond) {
                     self.Frames.push(Canvas2Image.saveAsPNG(newCanvas, true));
                 }
             }
+            
+            if (typeof continuation !== 'undefined'
+            && typeof continuation === 'function') {
+                continuation();
+            }
         };
         baseImage.src = imageFile;
     };
@@ -89,8 +97,8 @@ function CellAnimation(imageFile, cellX, cellY, frameCount, framesPerSecond) {
         if (self.FrameDelta > self.Delta) {
             self.FrameDelta -= self.Delta;
             
-            if (self.CurrentFrame >= self.Frames.length) {
-                self.CurrentFrame = 0;
+            if (self.CurrentFrame >= self.EndFrame) {
+                self.CurrentFrame = self.StartFrame;
             } else {
                 self.CurrentFrame++;
             }
@@ -100,7 +108,23 @@ function CellAnimation(imageFile, cellX, cellY, frameCount, framesPerSecond) {
         }
     }
     
+    this.SetCurrentImage = function() {
+        self.CurrentImage = self.Frames[self.CurrentFrame];
+    }
+    
     this.ChangeAnimationBounds = function(startCell, endCell) {
+        if (startCell < 0) {
+            startCell = 0;
+        } 
+        if (endCell >= self.Frames.length) {
+            endCell = self.Frames.length - 1;
+        }
         
+        self.StartFrame = startCell;
+        self.EndFrame = endCell;
+        self.CurrentFrame = startCell;
+
+        self.CurrentImage = self.Frames[self.CurrentFrame];
+        console.log("S:" + self.StartFrame + ", E:" + self.EndFrame + ", c:" + self.CurrentFrame);
     }
 }

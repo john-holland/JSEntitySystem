@@ -263,9 +263,8 @@ $(function() {
         //entity.Datas.Animation 
         
         //lol pokemon
-        var animation = new CellAnimation("pokemon_sprites_1_151_by_dragonite14.png", 24, 26, 608, 10,
-                                function() { animation.ChangeAnimationBounds(0, 3); });
-        
+        var animation = new CellAnimation("pokemon_sprites_1_151_by_dragonite14.png", 24, 26, 608, 10);
+        animation.ChangeAnimationBounds(0, 3);
         //var animation = new CellAnimation("rolling_dot.png", 4, 1, 4, 5);
         //var animation = new CellAnimation("swirls.png", 3, 3, 9, 60);
         var createNewElement = (function(x, y) {
@@ -348,51 +347,5 @@ $(function() {
                     });
                     typedYet = true;
                 }*/
-                var entIndex = 0;
-                if (char === ' ') {
-                    createMultipleRandomElements(10);
-                } else if (char === 'D') {
-                    //remove the last entity in the entities list
-                    for (i = 0; i < 10; i++) {
-                        if (entitySystem.EntityUpdateList.Any()) {
-                            entitySystem.RemoveEntity(entitySystem.EntityUpdateList.Last().Id);
-                        }
-                    }
-                } else if (char === 'N') {
-                    if ((animation.EndFrame + 4) >= animation.Frames.length) {
-                        animation.ChangeAnimationBounds(0, 3);
-                    } else {
-                        animation.ChangeAnimationBounds(animation.StartFrame + 4, animation.EndFrame + 4);   
-                    }
-                    for (entIndex = 0; entIndex < entitySystem.EntityUpdateList.length; entIndex++) {
-                        entitySystem.EntityUpdateList[entIndex].Datas.CurrentFrame = animation.CurrentFrame;
-                    }
-                } else if (char === 'P') {
-                    if ((animation.StartFrame - 4) < 0) {
-                        animation.ChangeAnimationBounds(animation.Frames.length - 5, animation.Frames.length - 1);
-                    } else {
-                        animation.ChangeAnimationBounds(animation.StartFrame - 4, animation.EndFrame - 4);   
-                    }
-                    for (entIndex = 0; entIndex < entitySystem.EntityUpdateList.length; entIndex++) {
-                        entitySystem.EntityUpdateList[entIndex].Datas.CurrentFrame = animation.CurrentFrame;
-                    }
-                }
-            });
-        });
-        
-//        var elementsToMake = 10;
-//        var divisor = 0;
-//        var maxDivisions = 10;
-//        for (divisor = 0; divisor < (maxDivisions - 1); divisor++) {
-//            for (i = 0; i < elementsToMake; i++) {
-//                createNewElement(docWidth * ((divisor + 1) / maxDivisions), docHeight * (i / elementsToMake));
-//            }
-//                    
-//            for (i = 0; i < elementsToMake; i++) {
-//                createNewElement(docWidth * (i / elementsToMake), docHeight * ((divisor + 1) / maxDivisions));
-//            }
-//        }
-    })();
-    
-    entitySystem.StartUpdating();
-});
+                
+                if (ch
