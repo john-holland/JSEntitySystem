@@ -8,7 +8,7 @@ Goals:
 * A test game using the engine to render on both the HTML5 canvas and document
 * Use local storage for persistance
 
-I'm using Cloud9 (which is wonderful so far!) for my IDE and I'm new to git, so this repo may get accidently nuked, or have unecessary push, pulls, commits etc. Bear with me!
+I'm using Cloud9 (which is wonderful so far!) for my IDE and I'm new to git, so this repo may get accidently nuked, or have unecessary pushes, pulls, commits etc. Bear with me!
 
 If you want to see a demo of the WIP (so I can't promise it'll work!), go to: https://c9.io/john-holland/jsentitysystem/workspace/index.html
 

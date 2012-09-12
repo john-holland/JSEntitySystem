@@ -369,7 +369,7 @@ $(function() {
                     }
                 } else if (char === 'P') {
                     if ((animation.StartFrame - 4) < 0) {
-                        animation.ChangeAnimationBounds(animation.Frames.length - 5, animation.Frames.length - 1);
+                        animation.ChangeAnimationBounds(animation.Frames.length - 4, animation.Frames.length - 1);
                     } else {
                         animation.ChangeAnimationBounds(animation.StartFrame - 4, animation.EndFrame - 4);   
                     }
