@@ -261,15 +261,32 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
           You can remove it by calling this.Remove() in the updateMethod or renderMethod you pass in.
         
         */
-        this.AddAnonymousComponent = function(updateMethod, renderMethod) {
+        this.AddAnonymousComponent = function(updateMethod, renderMethod, removed) {
             var anonComponent = this;
             updateMethod.Remove = function() {
                 self.UpdateComponents.indexAndRemove(anonComponent);
+                
+                if (typeof removed !== 'undefined') {
+                    removed(self);
+                }
+            }
+
+            self.UpdateComponents.push(anonComponent);
+            var methodsObject = new Object();
+            anonComponent.Methods = methodsObject;
+            
+        	methodsObject.Update = updateMethod;
+        	methodsObject.Render = renderMethod;
+            
+            var emptyFunc = function () { };
+            
+            if (typeof methodsObject.Update !== 'undefined') {
+                methodsObject.Update = emptyFunc;
             }
             
-            renderMethod.Remove = updateMethod.Remove;
-            
-            self.UpdateComponents.push(anonCompont);
+            if (typeof methodsObject.Render !== 'undefined') {
+                methodsObject.Render = emptyFunc;
+            }
             
             return [self, this];
         }

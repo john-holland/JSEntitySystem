@@ -53,7 +53,7 @@ function CellAnimation(imageFile, cellX, cellY, frameCount, framesPerSecond, con
                     framesGrabbed++;
                     
                     var currentBaseX = baseX * cellWidth;
-                    console.log("Current Frame: " + framesGrabbed + ", X: " + currentBaseX + ", Y: " + currentBaseY);
+                    //console.log("Current Frame: " + framesGrabbed + ", X: " + currentBaseX + ", Y: " + currentBaseY);
                     
                     newContext.fillStyle = "#000000";
                     newContext.fillRect(0,0,cellWidth,cellHeight);
