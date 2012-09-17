@@ -10,3 +10,14 @@ function IterateProperties(theObject, func) {
 function RandomFromTo(from, to) {
     return (Math.random() * to) + from;
 }
+
+Array.prototype.indexAndRemove = function(itemToRemove) {
+    var indexOfItem = this.indexOf(itemToRemove);
+    
+    if (indexOfItem == -1) {
+        return false;
+    }
+    
+    this.splice(indexOfItem, 1);
+    return true;
+}

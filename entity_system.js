@@ -227,6 +227,8 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     			//make sure to add each components required data here as well.
     			engine.AddComponentWithRequirements(self, componentName);
     		}
+            
+            return self;
     	};
         
         this.RemoveComponent = function(componentName) {
@@ -234,6 +236,8 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
                 self.Components[componentName].Methods.RemoveComponent(self, engine.LastUpdateTime);
                 delete self.Components[componentName];
             }
+            
+            return self;
         };
     	
     	this.Update = function(gameTime) {
@@ -248,6 +252,26 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
             for (i = 0; i < self.UpdateComponents.length; i++) {
                 self.UpdateComponents[i].Methods.Render(self, gameTime);
             }
+        }
+        
+        /*
+          
+          Adds a function to the render list and update list of the entity.
+          
+          You can remove it by calling this.Remove() in the updateMethod or renderMethod you pass in.
+        
+        */
+        this.AddAnonymousComponent = function(updateMethod, renderMethod) {
+            var anonComponent = this;
+            updateMethod.Remove = function() {
+                self.UpdateComponents.indexAndRemove(anonComponent);
+            }
+            
+            renderMethod.Remove = updateMethod.Remove;
+            
+            self.UpdateComponents.push(anonCompont);
+            
+            return [self, this];
         }
     	
     	engine.Entities[this.Id] = this;
