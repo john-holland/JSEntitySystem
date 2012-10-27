@@ -222,7 +222,7 @@ var JSEntitySystem = function(updateIntervalMilliseconds, canvasContext, fillCol
     	}
         
         if (typeof component.Methods.Assigned !== 'undefined') {
-            engine.Components[componentName].Methods.Assigned(entity, engine.LastUpdateTime);   
+            engine.Components[componentName].Methods.Assigned.call(entity.Datas, entity, engine.LastUpdateTime);   
         }
     }
     
@@ -253,16 +253,16 @@ var JSEntitySystem = function(updateIntervalMilliseconds, canvasContext, fillCol
     	
         //Adds a component and any dependencies.
         this.AddComponent = function(componentName) {            
-    		if (!(componentName in self.Components)) {
+    		if (!(componentName in self.Components) && (componentName in engine.Components)) {
                 if (arguments.length > 1) {
                     var argObject = arguments[1];
                     
                     if (argObject instanceof Object && argObject !== null) {
-                        var requiredDatas = self.Components[componentName].RequiredData;
+                        var requiredDatas = engine.Components[componentName].RequiredData;
                         
                         for (var dataNameCount = 0; dataNameCount < requiredDatas.length; dataNameCount++) {
-                            if (requiredDatas[dataNameCount] in argObject) {
-                                requiredDatas[dataNameCount] = argObject[dataNameCount];
+                            if (argObject.hasOwnProperty(requiredDatas[dataNameCount])) {
+                                self.Datas[requiredDatas[dataNameCount]] = argObject[requiredDatas[dataNameCount]];
                             }
                         }
                     }
@@ -278,7 +278,7 @@ var JSEntitySystem = function(updateIntervalMilliseconds, canvasContext, fillCol
         
         this.RemoveComponent = function(componentName) {
             if (componentName in self.Components && typeof self.Components[componentName].Removed !== undefined) {
-                self.Components[componentName].Methods.Removed(self, engine.LastUpdateTime);
+                self.Components[componentName].Methods.Removed.call(self.Datas, self, engine.LastUpdateTime);
                 delete self.Components[componentName];
             }
             
@@ -289,7 +289,7 @@ var JSEntitySystem = function(updateIntervalMilliseconds, canvasContext, fillCol
     		var i = 0;
     		for (i = 0; i < self.UpdateComponents.length; i++) {
                 if (typeof self.UpdateComponents[i].Methods.Update !== 'undefined') {
-                    self.UpdateComponents[i].Methods.Update(self, gameTime);   
+                    self.UpdateComponents[i].Methods.Update.call(self.Datas, self, gameTime);
                 }
     		}
     	};
@@ -298,7 +298,7 @@ var JSEntitySystem = function(updateIntervalMilliseconds, canvasContext, fillCol
             var i = 0;
             for (i = 0; i < self.UpdateComponents.length; i++) {
                 if (typeof self.UpdateComponents[i].Methods.Render !== 'undefined') {
-                    self.UpdateComponents[i].Methods.Render(self, gameTime);
+                    self.UpdateComponents[i].Methods.Render.call(self.Datas, self, gameTime);
                 }
             }
         }
