@@ -18,9 +18,9 @@
         Then retrieved:
             return Datas["requestedData"].wrappedFunction;
 */
-function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
+var JSEntitySystem = function(updateIntervalMilliseconds, canvasContext, fillColor) {
     /*
-      This is the next free Id ready to be assigned to an entity.
+6      This is the next free Id ready to 1be assigned to an entity.
     */
     this.NextFreeId = 0;
     
@@ -158,12 +158,41 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
       Registers a Component by name in the Components map.
     */
     this.RegisterComponent = function(componentName, component, requiredComponents, requiredData) {
-    	engine.Components[componentName] = {
+    	var newComponent = {
     		ComponentName : componentName,
-    		Methods : component,
     		RequiredComponents : requiredComponents,
     		RequiredData : requiredData
     	};
+        
+        if (component != null) {
+            newComponent.Methods = component;
+        } else {
+            newComponent.Methods = new Object();
+        }
+        
+        newComponent.Assigned = function(assignedFunction) {
+            newComponent.Methods.Assigned = assignedFunction;
+            return newComponent;
+        }
+        
+        newComponent.Removed = function(removedFunction) {
+            newComponent.Methods.Removed = removedFunction;
+            return newComponent;
+        }
+        
+        newComponent.Update = function(updateFunction) {
+            newComponent.Methods.Update = updateFunction;
+            return newComponent;
+        }
+        
+        newComponent.Render = function(renderFunction) {
+            newComponent.Methods.Render = renderFunction;
+            return newComponent;
+        }
+        
+        engine.Components[componentName] = newComponent;
+        
+        return newComponent;
     }
     
     /*
@@ -192,7 +221,9 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     		}
     	}
         
-        engine.Components[componentName].Methods.Assigned(entity, engine.LastUpdateTime);
+        if (typeof component.Methods.Assigned !== 'undefined') {
+            engine.Components[componentName].Methods.Assigned(entity, engine.LastUpdateTime);   
+        }
     }
     
     /*
@@ -221,8 +252,22 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     	this.UpdateComponents = [];
     	
         //Adds a component and any dependencies.
-        this.AddComponent = function(componentName) {
+        this.AddComponent = function(componentName) {            
     		if (!(componentName in self.Components)) {
+                if (arguments.length > 1) {
+                    var argObject = arguments[1];
+                    
+                    if (argObject instanceof Object && argObject !== null) {
+                        var requiredDatas = self.Components[componentName].RequiredData;
+                        
+                        for (var dataNameCount = 0; dataNameCount < requiredDatas.length; dataNameCount++) {
+                            if (requiredDatas[dataNameCount] in argObject) {
+                                requiredDatas[dataNameCount] = argObject[dataNameCount];
+                            }
+                        }
+                    }
+                }
+                
     			//recursively add components here.
     			//make sure to add each components required data here as well.
     			engine.AddComponentWithRequirements(self, componentName);
@@ -232,8 +277,8 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     	};
         
         this.RemoveComponent = function(componentName) {
-            if (componentName in self.Components) {
-                self.Components[componentName].Methods.RemoveComponent(self, engine.LastUpdateTime);
+            if (componentName in self.Components && typeof self.Components[componentName].Removed !== undefined) {
+                self.Components[componentName].Methods.Removed(self, engine.LastUpdateTime);
                 delete self.Components[componentName];
             }
             
@@ -243,14 +288,18 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     	this.Update = function(gameTime) {
     		var i = 0;
     		for (i = 0; i < self.UpdateComponents.length; i++) {
-    			self.UpdateComponents[i].Methods.Update(self, gameTime);
+                if (typeof self.UpdateComponents[i].Methods.Update !== 'undefined') {
+                    self.UpdateComponents[i].Methods.Update(self, gameTime);   
+                }
     		}
     	};
         
         this.Render = function(gameTime) {
             var i = 0;
             for (i = 0; i < self.UpdateComponents.length; i++) {
-                self.UpdateComponents[i].Methods.Render(self, gameTime);
+                if (typeof self.UpdateComponents[i].Methods.Render !== 'undefined') {
+                    self.UpdateComponents[i].Methods.Render(self, gameTime);
+                }
             }
         }
         
@@ -315,6 +364,13 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
         delete engine.Entities[entityId];
     }
     
+    this.RemoveAllEntities = function() {
+        while (engine.EntityUpdateList.Any()) {
+            var entityToRemove = engine.EntityUpdateList.First();
+            engine.RemoveEntity(entityToRemove.Id);
+        }
+    }
+    
     this.Update = function(gameTime) {
         var i = 0;
         for(i = 0; i < engine.EntityUpdateList.length; i++) {
@@ -325,10 +381,24 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
             return;
         }
         
-        var docHeight = $(document).height();
-        var docWidth = $(document).width();
-        canvasContext.fillStyle = fillColor;
-        canvasContext.fillRect(0,0,docWidth,docHeight);
+        if (canvasContext != null) {
+            var docHeight = $(document).height();
+            var docWidth = $(document).width();
+            
+            if (typeof fillColor != 'undefined') {
+                canvasContext.fillStyle = fillColor;
+                canvasContext.fillRect(0,0,docWidth,docHeight);
+            } else {
+                canvasContext.save();
+
+                // Use the identity matrix while clearing the canvas
+                canvasContext.setTransform(1, 0, 0, 1, 0, 0);
+                canvasContext.clearRect(0, 0, docWidth, docHeight);
+                
+                // Restore the transform
+                canvasContext.restore();
+            }
+        }
         
         for (i = 0; i < engine.EntityUpdateList.length; i++) {
             engine.EntityUpdateList[i].Render(gameTime);

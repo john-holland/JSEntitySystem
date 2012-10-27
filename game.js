@@ -248,6 +248,11 @@ $(function() {
         ['ImageCanvasRenderer'],
         ['ImageFile', 'CellX', 'CellY', 'FrameCount', 'FramesPerSecond']);
     
+    entitySystem.RegisterComponent("SomeGuy", null, [], [])
+        .Update(function(entity, gameTime) {
+            entity.Datas.Rotation = entity.Datas.Rotation + 0.1;
+        });
+    
     (function() {
         var typedYet = false;        
         
@@ -295,7 +300,7 @@ $(function() {
                 ent.Datas.FramesPerSecond = 5;
                 
                 ent.Datas.Animation = animation;
-                
+                ent.AddComponent('SomeGuy');
                 ent.AddComponent('CellAnimationUpdater');
                     
                 ent.AddComponent('FollowMouse');
@@ -333,7 +338,7 @@ $(function() {
             }
         }
         
-        createMultipleRandomElements(entitySystem.IsOnTouchDevice ? 250 : 1000);
+        createMultipleRandomElements(100);//entitySystem.IsOnTouchDevice ? 250 : 1000);
         
         $(document).ready(function () {
             $(window).keydown(function(args) {
@@ -393,6 +398,6 @@ $(function() {
 //            }
 //        }
     })();
-    
+    alert("hey");
     entitySystem.StartUpdating();
 });

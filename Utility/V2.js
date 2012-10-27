@@ -16,7 +16,7 @@ function V2(x, y) {
       Checks the value passed in to make sure it's a Vector2.
     */
     var IsVector2 = function (value) {
-        return value.constructor === V2;
+        return value.constructor === V2 || value.constructor === ImmutableV2;
     };
     
     this.IsVector2 = IsVector2;
@@ -136,6 +136,10 @@ function V2(x, y) {
     this.AsImmutable = function() {
         return new ImmutableV2(this.X, this.Y);
     }
+    
+    this.ToRadians = function() {
+        return Math.atan2(this.Y, this.X);
+    }
 }
 
 
@@ -152,7 +156,11 @@ function ImmutableV2(x, y) {
       Checks the value passed in to make sure it's a Vector2.
     */
     var IsVector2 = function (value) {
-        return value.constructor === V2;
+        return value.constructor === V2 || value.constructor === ImmutableV2;
+    };
+    
+    this.Equals = function(vec2) {
+        return IsVector2(vec2) && this.X == vec2.X && this.Y == vec2.Y;
     };
     
     /*
@@ -169,6 +177,10 @@ function ImmutableV2(x, y) {
     this.Length = function() {
         return Math.sqrt(this.Dot(this)); 
     }
+    
+    this.Perpindicular = function() {
+        return new ImmutableV2(-this.Y, this.X);
+    }
 
     /*
       Returns the length * length of the V2. Faster than V2.Length as it does not
@@ -182,7 +194,7 @@ function ImmutableV2(x, y) {
       Returns the Absolute value for this vector's X and Y in a new V2.
     */
     this.Abs = function() {
-        return new V2(Math.abs(this.X), Math.abs(this.Y));
+        return new ImmutableV2(Math.abs(this.X), Math.abs(this.Y));
     }
 
     /*
@@ -190,7 +202,7 @@ function ImmutableV2(x, y) {
     */
     this.Normalize = function() {
         var vlen = this.Length();
-        return new V2(this.X / vlen, this.Y / vlen);
+        return new ImmutableV2(this.X / vlen, this.Y / vlen);
     }
     
     /*
@@ -198,9 +210,9 @@ function ImmutableV2(x, y) {
     */
     this.Multiply = function (value) {
         if (IsVector2(value)) {
-            return new V2(this.X * value.X, this.Y * value.Y);
+            return new ImmutableV2(this.X * value.X, this.Y * value.Y);
         } else {
-            return new V2(this.X * value, this.Y * value);   
+            return new ImmutableV2(this.X * value, this.Y * value);   
         }
     }
     
@@ -208,7 +220,7 @@ function ImmutableV2(x, y) {
       Returns the divisor of this vector and a scalar passed in.
     */
     this.Divide = function(value) {
-        return new V2(this.X / value, this.Y / value); 
+        return new ImmutableV2(this.X / value, this.Y / value); 
     }
     
     /*
@@ -216,9 +228,9 @@ function ImmutableV2(x, y) {
     */
     this.Add = function(value) {
         if (IsVector2(value)) {
-            return new V2(this.X + value.X, this.Y + value.Y); 
+            return new ImmutableV2(this.X + value.X, this.Y + value.Y); 
         } else {
-            return new V2(this.X + value, this.Y + value);
+            return new ImmutableV2(this.X + value, this.Y + value);
         }
     }
     
@@ -227,13 +239,17 @@ function ImmutableV2(x, y) {
     */
     this.Sub = function(value) {
         if (IsVector2(value)) { 
-            return new V2(this.X - value.X, this.Y - value.Y);
+            return new ImmutableV2(this.X - value.X, this.Y - value.Y);
         } else {
-            return new V2(this.X - value, this.Y - value); 
+            return new ImmutableV2(this.X - value, this.Y - value); 
         }
     }
     
     this.AsMutable = function() {
         return new V2(this.X, this.Y);
+    }
+    
+    this.ToRadians = function() {
+        return Math.atan2(this.Y, this.X);
     }
 }

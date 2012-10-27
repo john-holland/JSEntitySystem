@@ -1,7 +1,7 @@
 Array.prototype.Map = function(func) {
     var mappedArray = new Array(this.length);
-	var i;
-	
+    var i;
+    
 	for (i = 0; i < this.length; i++) {
 		mappedArray[i] = func(this[i]);
 	}
@@ -22,7 +22,7 @@ Array.prototype.Fold = function(initialVal, func) {
 	return ret;
 }
 
-Array.prototype.Aggregate = Array.Fold;
+Array.prototype.Aggregate = Array.prototype.Fold;
 
 Array.prototype.Find = function(predicate) {
 	var matches = [];
@@ -54,11 +54,11 @@ Array.prototype.Skip = function(amount) {
 	
 	//can't skip more than exist!
 	if (remaining > 0) {
-		var skipped = new Array(remaining);
+		var skipped = [];
 	
 		var i;
 		for (i = amount; i < this.length; i++) {
-			skipped[i];
+			skipped.push(this[i]);
 		}
 		
 		return skipped;
@@ -72,11 +72,11 @@ Array.prototype.Take = function(amount) {
 		amount = this.length;
 	}
 	
-	var takenElements = new Array(amount);
+	var takenElements = [];
 	
 	var i;
 	for (i = 0; i < amount; i++) {
-		takenElements[i] = this[i];
+		takenElements.push(this[i]);
 	}
 	
 	return takenElements;
@@ -102,13 +102,13 @@ Array.prototype.Take = function(amount) {
   }
 */
 Array.prototype.Any = function(predicate) {
-    if (typeof predicate == 'undefined') {
+    if (typeof predicate === 'undefined') {
         return (this.length > 0);
     }
     
     var i;
     
-    if (typeof predicate == 'Function') {
+    if (typeof predicate === 'function') {
         for (i = 0; i < this.length; i++) {
             if (predicate(this[i])) {
                 return true;
