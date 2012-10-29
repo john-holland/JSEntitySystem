@@ -1,170 +1,139 @@
 var image = new Image();
 
 var createAnimationEntity = null;
+var createMultipleRandomElements = null;
+var deleteMultipleRandomElements = null;
         
 $(function() {
     var canvasElement = $("#myCanvas");
     var canvasContext = canvasElement[0].getContext("2d");
     var entitySystem = new JSEntitySystem(16, canvasContext, "#000000");
     
-    //TODO: This 'TestComponent' should be reworked into a 'FollowMouse' component that takes an element reference in its Datas.
-    entitySystem.RegisterComponent('FollowMouse',
-        new entitySystem.Component(function(entity, gameTime) {
-                            //assigned
-                            
-                            if (typeof entity.Datas.ElementToMove !== 'undefined') {
-                                entity.Datas.ElementToMove.css('position', 'absolute');
-                                entity.Datas.ElementToMove.css('width','2em');
-                            }
-                            
-                            //if the current position is defined
-                            if (typeof entity.Datas.Position !== 'undefined') {
-                                //and if the original position is undefined, then we can copy over this current position
-                                if (typeof entity.Datas.OriginalPos === 'undefined') {
-                                    entity.Datas.OriginalPos = entity.Datas.Position.Copy();
-                                    entity.Datas.OriginalSpeed = entity.Datas.Speed;
-                                }
-                            }
-                            
-                            if (typeof entity.Datas.Position === 'undefined') {
-                                entity.Datas.Position = new V2();
-                            }
-                            
-                            if (typeof entity.Datas.ToMouse === 'undefined') {
-                                entity.Datas.ToMouse = new V2();
-                            }
-                            
-                            
-                            if (entitySystem.IsOnTouchDevice) {
-                                if (typeof entity.Datas.AveragePos === 'undefined') {
-                                    entity.Datas.AveragePos = new V2();
-                                }
-                            }
-            			},
-            			function(entity, gameTime) {
-                            //removed
-        				},
-            			function(entity, gameTime) {
-                            //update
-                            
-                            //A -> B :: B - A
-                            var currentPos = entity.Datas.Position;//.Init(divPos.left, divPos.top);
-                            
-                            var speedModifier = 1;
-                            var lengthToMouse = 10000;
-                            
-                            var sensingDistance = 300;
-                            var sensingDistanceSqr = sensingDistance * sensingDistance;
-                                                        
-                            if (entitySystem.IsOnTouchDevice && entitySystem.TouchPositions.Any()) {
-                                sensingDistance = 200;
-                                sensingDistanceSqr = sensingDistance * sensingDistance;
-                                
-                                //average out the positions of nearby touches and head for that point.                                
-                                var j = 0;
-                                for (j = 0; j < entitySystem.TouchPositions.length; j++) {
-                                    if (j === 0) {
-                                        entity.Datas.AveragePos.InitFromV2(entitySystem.TouchPositions.First());
-                                    }
-                                    
-                                    var touchToMouse = entitySystem.TouchPositions[j].Copy();
-                                    
-                                    touchToMouse.Sub(currentPos);
-                                    
-                                    if (touchToMouse.LengthSqr() < sensingDistanceSqr) {
-                                        //entity.Datas.AveragePos.Add(entitySystem.TouchPositions[j]);
-                                        entity.Datas.ToMouse.InitFromV2(touchToMouse);
-                                    }
-                                }
-//                                
-//                                var divideByAmount = 1;
-//                                if (entitySystem.TouchPositions.length > 1) {
-//                                    divideByAmount = entitySystem.TouchPositions.length;
-//                                }
-                                
-//                                entity.Datas.AveragePos.Divide(divideByAmount);
-//                                if (entityDatas.AveragePos.ToTouchPositions.Any()) {
-//                                    entity.Datas.ToMouse.InitFromV2(entityDatas.AveragePos.ToTouchPositions.First()).Sub(currentPos);
-//                                }
-                            } else {                                
-                                entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos).Sub(currentPos);
-                            }
-                            
-                            var toMouse = entity.Datas.ToMouse;
-                            
-                            entity.Datas.Rotation = Math.atan2(toMouse.Y, toMouse.X);
-                            
-                            lengthToMouse = toMouse.Length();
-                            
-                            if (lengthToMouse < 20) {
-                                entity.Datas.Speed = 0;
-                            } else if (lengthToMouse < sensingDistance) {
-                                entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);
-                            }
-                            
-                            if (lengthToMouse >= sensingDistance || !entitySystem.IsMouseDown) {
-                                if (typeof entity.Datas.OriginalPos !== 'undefined') {
-                                    entity.Datas.Speed = entity.Datas.OriginalSpeed;
-                                    toMouse = entity.Datas.ToMouse.InitFromV2(entity.Datas.OriginalPos)
-                                                                  .Sub(currentPos);
-
-                                    entity.Datas.Rotation = Math.atan2(toMouse.Y, toMouse.X);
-
-                                    if (toMouse.Length() < 40) {
-                                        entity.Datas.Speed = 0;
-                                        entity.Datas.Position.InitFromV2(entity.Datas.OriginalPos);
-                                        return;
-                                    }
-                                } else {
-                                    entity.Datas.Speed = 0;
-                                }
-                            }
-                            
-        				},
-            			function(entity, gameTime) {
-                            //render
-            			}),
-                	['MovementUpdater'],
-                    ['Speed']);
-                    
-    entitySystem.RegisterComponent('RotateClockwise',
-        new entitySystem.Component(function(entity, gameTime) {
-                            //assigned
-                            //entity.Datas.ElementToMove.css('width','0em');
-                            //entity.Datas.ElementToMove.css("-webkit-transform-origin", "50% 50%" );
-            			},
-            			function(entity, gameTime) {
-                            //removed
-        				},
-            			function(entity, gameTime) {
-                            //update
-                            
-                            if (typeof entity.Datas.Rotation === 'undefined') {                                
-                                entity.Datas.Rotation = 0;
-                            }
-                            
-                            entity.Datas.Rotation += 100 * (gameTime / 1000);
-                            
-                            if (typeof entity.Datas.ElementToMove !== 'undefined') {
-                                entity.Datas.ElementToMove.rotate(entity.Datas.Rotation);
-                            }
-        				},
-            			function(entity, gameTime) {
-                            //render
-            			}),
-                	[],
-                    []);
-                    
-    entitySystem.RegisterComponent('MovementUpdater',
-        new entitySystem.Component(function(entity, gameTime) {
-            //assigned
-        },
-        function(entity, gameTime) {
-            //removed
-        },
-        function(entity, gameTime) {
+    entitySystem.RegisterComponent('FollowMouse', null, ['MovementUpdater'], ['Speed'])
+        .Assigned(function(entity, gameTime) {                           
+            if (typeof entity.Datas.ElementToMove !== 'undefined') {
+                entity.Datas.ElementToMove.css('position', 'absolute');
+                entity.Datas.ElementToMove.css('width','2em');
+            }
+            
+            //if the current position is defined
+            if (typeof entity.Datas.Position !== 'undefined') {
+                //and if the original position is undefined, then we can copy over this current position
+                if (typeof entity.Datas.OriginalPos === 'undefined') {
+                    entity.Datas.OriginalPos = entity.Datas.Position.Copy();
+                    entity.Datas.OriginalSpeed = entity.Datas.Speed;
+                }
+            }
+            
+            if (typeof entity.Datas.Position === 'undefined') {
+                entity.Datas.Position = new V2();
+            }
+            
+            if (typeof entity.Datas.ToMouse === 'undefined') {
+                entity.Datas.ToMouse = new V2();
+            }
+            
+            
+            if (entitySystem.IsOnTouchDevice) {
+                if (typeof entity.Datas.AveragePos === 'undefined') {
+                    entity.Datas.AveragePos = new V2();
+                }
+            }
+    	})
+    	.Update(function(entity, gameTime) {
             //update
             
+            //A -> B :: B - A
+            var currentPos = entity.Datas.Position;//.Init(divPos.left, divPos.top);
+            
+            var speedModifier = 1;
+            var lengthToMouse = 10000;
+            
+            var sensingDistance = 300;
+            var sensingDistanceSqr = sensingDistance * sensingDistance;
+                                        
+            if (entitySystem.IsOnTouchDevice && entitySystem.TouchPositions.Any()) {
+                sensingDistance = 200;
+                sensingDistanceSqr = sensingDistance * sensingDistance;
+                
+                //average out the positions of nearby touches and head for that point.                                
+                var j = 0;
+                for (j = 0; j < entitySystem.TouchPositions.length; j++) {
+                    if (j === 0) {
+                        entity.Datas.AveragePos.InitFromV2(entitySystem.TouchPositions.First());
+                    }
+                    
+                    var touchToMouse = entitySystem.TouchPositions[j].Copy();
+                    
+                    touchToMouse.Sub(currentPos);
+                    
+                    if (touchToMouse.LengthSqr() < sensingDistanceSqr) {
+                        //entity.Datas.AveragePos.Add(entitySystem.TouchPositions[j]);
+                        entity.Datas.ToMouse.InitFromV2(touchToMouse);
+                    }
+                }
+    //                                
+    //                                var divideByAmount = 1;
+    //                                if (entitySystem.TouchPositions.length > 1) {
+    //                                    divideByAmount = entitySystem.TouchPositions.length;
+    //                                }
+                
+    //                                entity.Datas.AveragePos.Divide(divideByAmount);
+    //                                if (entityDatas.AveragePos.ToTouchPositions.Any()) {
+    //                                    entity.Datas.ToMouse.InitFromV2(entityDatas.AveragePos.ToTouchPositions.First()).Sub(currentPos);
+    //                                }
+            } else {                                
+                entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos).Sub(currentPos);
+            }
+            
+            var toMouse = entity.Datas.ToMouse;
+            
+            entity.Datas.Rotation = Math.atan2(toMouse.Y, toMouse.X);
+            
+            lengthToMouse = toMouse.Length();
+            
+            if (lengthToMouse < 20) {
+                entity.Datas.Speed = 0;
+            } else if (lengthToMouse < sensingDistance) {
+                entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);
+            }
+            
+            if (lengthToMouse >= sensingDistance || !entitySystem.IsMouseDown) {
+                if (typeof entity.Datas.OriginalPos !== 'undefined') {
+                    entity.Datas.Speed = entity.Datas.OriginalSpeed;
+                    toMouse = entity.Datas.ToMouse.InitFromV2(entity.Datas.OriginalPos)
+                                                  .Sub(currentPos);
+    
+                    entity.Datas.Rotation = Math.atan2(toMouse.Y, toMouse.X);
+    
+                    if (toMouse.Length() < 40) {
+                        entity.Datas.Speed = 0;
+                        entity.Datas.Position.InitFromV2(entity.Datas.OriginalPos);
+                        return;
+                    }
+                } else {
+                    entity.Datas.Speed = 0;
+                }
+            }
+            
+    	});
+                    
+    entitySystem.RegisterComponent('RotateClockwise', null, [], [])
+        .Update(function(entity, gameTime) {
+            if (typeof entity.Datas.Rotation === 'undefined') {                                
+                entity.Datas.Rotation = 0;
+            }
+            
+            entity.Datas.Rotation += 100 * (gameTime / 1000);
+            
+            if (typeof entity.Datas.ElementToMove !== 'undefined') {
+                entity.Datas.ElementToMove.rotate(entity.Datas.Rotation);
+            }
+		});
+                    
+    entitySystem.RegisterComponent('MovementUpdater', null, [],
+        ['Position', 'Speed', 'Heading'])
+        .Update(function(entity, gameTime) {        
             var rot = entity.Datas.Rotation;
 
             entity.Datas.Heading.Init(Math.cos(rot), Math.sin(rot)).Normalize();
@@ -176,26 +145,12 @@ $(function() {
                 div.css('left', entity.Datas.Position.X);
                 div.css('top', entity.Datas.Position.Y);
             }
-        },
-        function(entity, gameTime) {
-            //render
-        }),
-        [],
-        ['Position', 'Speed', 'Heading']);
+        });
         
     var toRadians = Math.PI/180;
-    entitySystem.RegisterComponent('ImageCanvasRenderer', 
-        new entitySystem.Component(function(entity, gameTime) {
-            //assigned
-        },
-        function(entity, gameTime) {
-            //removed
-        },
-        function(entity, gameTime) {
-            //update
-        },
-        function(entity, gameTime) {
-            //render
+    entitySystem.RegisterComponent('ImageCanvasRenderer', null, [],
+        ['Position', 'Rotation', 'ImageToRender', 'ContextToRenderOn'])
+        .Render(function(entity, gameTime) {
             if (entity.Datas.ContextToRenderOn === null || entity.Datas.ImageToRender === null
                 || typeof entity.Datas.ImageToRender === 'undefined') {
                 return;
@@ -205,48 +160,40 @@ $(function() {
             
             context.save();
  
-        	context.translate(entity.Datas.Position.X, entity.Datas.Position.Y);
+            context.translate(entity.Datas.Position.X, entity.Datas.Position.Y);
          
         	context.rotate(entity.Datas.Rotation);
          
         	context.drawImage(entity.Datas.ImageToRender, -(entity.Datas.ImageToRender.width/2), -(entity.Datas.ImageToRender.height/2));
             
             context.restore();
-        }),
-        [],
-        ['Position', 'Rotation', 'ImageToRender', 'ContextToRenderOn']);
+        });
         
-    entitySystem.RegisterComponent('CellAnimationUpdater', 
-        new entitySystem.Component(function(entity, gameTime) {
-            //assigned
-            if (typeof entity.Datas.Animation === 'undefined') {
-                entity.Datas.Animation = new CellAnimation(entity.Datas.ImageFile, entity.Datas.CellX, entity.Datas.CellY, entity.Datas.FrameCount, entity.Datas.FramesPerSecond);
-            }
-            
-            entity.Datas.FrameDelta = 0;
-            entity.Datas.CurrentFrame = 0;
-        },
-        function(entity, gameTime) {
-            //removed
-        },
-        function(entity, gameTime) {
-            //update
-            entity.Datas.Animation.FrameDelta = entity.Datas.FrameDelta;
-            entity.Datas.Animation.CurrentFrame = entity.Datas.CurrentFrame;
-            
-            entity.Datas.Animation.UpdateCell(gameTime);
-            if (typeof entity.Datas.Animation.CurrentImage !== 'undefined') {
-                entity.Datas.ImageToRender = entity.Datas.Animation.CurrentImage;   
-            }
-            
-            entity.Datas.FrameDelta = entity.Datas.Animation.FrameDelta;
-            entity.Datas.CurrentFrame = entity.Datas.Animation.CurrentFrame;
-        },
-        function(entity, gameTime) {
-            //render
-        }),
+    entitySystem.RegisterComponent('CellAnimationRenderer', null,
         ['ImageCanvasRenderer'],
-        ['ImageFile', 'CellX', 'CellY', 'FrameCount', 'FramesPerSecond']);
+        ['ImageFile', 'CellX', 'CellY', 'FrameCount', 'FramesPerSecond'])
+        .Assigned(function(entity, gameTime) {
+            //assigned
+            if (typeof this.Animation === 'undefined') {
+                this.Animation = new CellAnimation(entity.Datas.ImageFile, entity.Datas.CellX, entity.Datas.CellY, entity.Datas.FrameCount, entity.Datas.FramesPerSecond);
+            }
+            
+            this.FrameDelta = 0;
+            this.CurrentFrame = 0;
+        })
+        .Update(function(entity, gameTime) {
+            //update
+            this.Animation.FrameDelta = this.FrameDelta;
+            this.Animation.CurrentFrame = this.CurrentFrame;
+            
+            this.Animation.UpdateCell(gameTime);
+            if (typeof this.Animation.CurrentImage !== 'undefined') {
+                this.ImageToRender = this.Animation.CurrentImage;   
+            }
+            
+            this.FrameDelta = this.Animation.FrameDelta;
+            this.CurrentFrame = this.Animation.CurrentFrame;
+        });
     
     entitySystem.RegisterComponent("SomeGuy", null, [], [])
         .Update(function(entity, gameTime) {
@@ -268,8 +215,8 @@ $(function() {
         //entity.Datas.Animation 
         
         //lol pokemon
-        var animation = new CellAnimation("pokemon_sprites_1_151_by_dragonite14.png", 24, 26, 608, 10,
-                                function() { animation.ChangeAnimationBounds(0, 3); });
+        //var animation = new CellAnimation("pokemon_sprites_1_151_by_dragonite14.png", 24, 26, 608, 10,
+        //                        function() { animation.ChangeAnimationBounds(0, 3); });
         
         //var animation = new CellAnimation("rolling_dot.png", 4, 1, 4, 5);
         //var animation = new CellAnimation("swirls.png", 3, 3, 9, 60);
@@ -299,9 +246,9 @@ $(function() {
                 ent.Datas.FrameCount = 608;
                 ent.Datas.FramesPerSecond = 5;
                 
-                ent.Datas.Animation = animation;
+                //ent.Datas.Animation = animation;
                 ent.AddComponent('SomeGuy');
-                ent.AddComponent('CellAnimationUpdater');
+                //ent.AddComponent('CellAnimationRenderer');
                     
                 ent.AddComponent('FollowMouse');
                 ent.AddComponent('ImageCanvasRenderer');
@@ -328,13 +275,23 @@ $(function() {
             animationEntity.Datas.ContextToRenderOn = canvasContext;
             
             animationEntity.AddComponent('ImageCanvasRenderer');
-            animationEntity.AddComponent('CellAnimationUpdater');
+            //animationEntity.AddComponent('CellAnimationRenderer');
         };
         //random elements to make.
         
-        var createMultipleRandomElements = function(amountOfEntitiesToMake) {
+        createMultipleRandomElements = function(amountOfEntitiesToMake) {
             for (i = 0; i < amountOfEntitiesToMake; i++) {
                 createNewElement(RandomFromTo(0, docWidth), RandomFromTo(0, docHeight));
+            }
+        }
+        
+        deleteMultipleRandomElements = function(amountOfEntitiesToRemove) {
+            for (i = 0; i < amountOfEntitiesToRemove; i++) {
+                if (entitySystem.EntityUpdateList.Any()) {
+                    entitySystem.RemoveEntity(entitySystem.EntityUpdateList.Last().Id);
+                } else {
+                    break;
+                }
             }
         }
         
@@ -363,7 +320,7 @@ $(function() {
                             entitySystem.RemoveEntity(entitySystem.EntityUpdateList.Last().Id);
                         }
                     }
-                } else if (char === 'N') {
+                }/* else if (char === 'N') {
                     if ((animation.EndFrame + 4) >= animation.Frames.length) {
                         animation.ChangeAnimationBounds(0, 3);
                     } else {
@@ -381,7 +338,7 @@ $(function() {
                     for (entIndex = 0; entIndex < entitySystem.EntityUpdateList.length; entIndex++) {
                         entitySystem.EntityUpdateList[entIndex].Datas.CurrentFrame = animation.CurrentFrame;
                     }
-                }
+                }*/
             });
         });
         
@@ -398,6 +355,6 @@ $(function() {
 //            }
 //        }
     })();
-    alert("hey");
+    
     entitySystem.StartUpdating();
 });

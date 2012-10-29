@@ -32,7 +32,7 @@ ImmutableV2.prototype.To = function(target) {
     return target.Sub(this);
 }
 
-Object.prototype.DepthFirstSearch = function(getChildren, action) {
+/*Object.prototype.DepthFirstSearch = function(getChildren, action) {
     var children = getChildren(this);
     var extraArgs = arguments.slice(2);
     if (!action.apply(action, [this].concat())) {
@@ -42,7 +42,7 @@ Object.prototype.DepthFirstSearch = function(getChildren, action) {
     children.forEach(function (child) {
         child.DepthFirstSearch(getChildren, action);
     });
-}
+}*/
 
 Array.prototype.contains = function(item) {
     return $.inArray(item, this) !== -1;
@@ -60,6 +60,6 @@ function isNumber(n) {
 }
 
 //boo yeah dynamic languages :)
-Object.prototype.Sequence = function(action) {
+/*Object.prototype.Sequence = function(action) {
     return action(this);
-}
+}*/

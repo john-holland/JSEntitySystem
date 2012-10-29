@@ -89,7 +89,7 @@ function CellAnimation(imageFile, cellX, cellY, frameCount, framesPerSecond, con
     }
     
     /*
-      Updates the animation cell.
+      Updates the animation cell. You can then RenderCurrent(context, x, y[, width, height]);
     */
     this.UpdateCell = function(delta) {
         self.FrameDelta += delta;

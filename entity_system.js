@@ -18,7 +18,7 @@
         Then retrieved:
             return Datas["requestedData"].wrappedFunction;
 */
-var JSEntitySystem = function(updateIntervalMilliseconds, canvasContext, fillColor) {
+function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     /*
 6      This is the next free Id ready to 1be assigned to an entity.
     */
