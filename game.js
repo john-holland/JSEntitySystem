@@ -3,13 +3,15 @@ var image = new Image();
 var createAnimationEntity = null;
 var createMultipleRandomElements = null;
 var deleteMultipleRandomElements = null;
-        
+var  FollowMouseComponent = null;    
+var entitySystem = null;
 $(function() {
     var canvasElement = $("#myCanvas");
     var canvasContext = canvasElement[0].getContext("2d");
-    var entitySystem = new JSEntitySystem(16, canvasContext, "#000000");
+    entitySystem = new JSEntitySystem(16, canvasContext, "#000000");
     
-    entitySystem.RegisterComponent('FollowMouse', null, ['MovementUpdater'], ['Speed'])
+    FollowMouseComponent = entitySystem.RegisterComponent('FollowMouse', ['MovementUpdater'],
+        { Speed: 1000, AttractionRadius: 2000 })
         .Assigned(function(entity, gameTime) {                           
             if (typeof entity.Datas.ElementToMove !== 'undefined') {
                 entity.Datas.ElementToMove.css('position', 'absolute');
@@ -47,7 +49,7 @@ $(function() {
             var currentPos = entity.Datas.Position;//.Init(divPos.left, divPos.top);
             
             var speedModifier = 1;
-            var lengthToMouse = 10000;
+            var lengthToMouse = 1000;
             
             var sensingDistance = 300;
             var sensingDistanceSqr = sensingDistance * sensingDistance;
@@ -68,39 +70,29 @@ $(function() {
                     touchToMouse.Sub(currentPos);
                     
                     if (touchToMouse.LengthSqr() < sensingDistanceSqr) {
-                        //entity.Datas.AveragePos.Add(entitySystem.TouchPositions[j]);
                         entity.Datas.ToMouse.InitFromV2(touchToMouse);
                     }
                 }
-    //                                
-    //                                var divideByAmount = 1;
-    //                                if (entitySystem.TouchPositions.length > 1) {
-    //                                    divideByAmount = entitySystem.TouchPositions.length;
-    //                                }
-                
-    //                                entity.Datas.AveragePos.Divide(divideByAmount);
-    //                                if (entityDatas.AveragePos.ToTouchPositions.Any()) {
-    //                                    entity.Datas.ToMouse.InitFromV2(entityDatas.AveragePos.ToTouchPositions.First()).Sub(currentPos);
-    //                                }
             } else {                                
                 entity.Datas.ToMouse.InitFromV2(entitySystem.MousePos).Sub(currentPos);
             }
             
             var toMouse = entity.Datas.ToMouse;
             
-            entity.Datas.Rotation = Math.atan2(toMouse.Y, toMouse.X);
-            
             lengthToMouse = toMouse.Length();
             
             if (lengthToMouse < 20) {
                 entity.Datas.Speed = 0;
+                return;
             } else if (lengthToMouse < sensingDistance) {
-                entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - 0.5);
+                entity.Datas.Speed = entity.Datas.OriginalSpeed * ((lengthToMouse / sensingDistance) - FollowMouseComponent.AttractionRadius / 1000);
             }
+            
+            entity.Datas.Rotation = Math.atan2(toMouse.Y, toMouse.X);
             
             if (lengthToMouse >= sensingDistance || !entitySystem.IsMouseDown) {
                 if (typeof entity.Datas.OriginalPos !== 'undefined') {
-                    entity.Datas.Speed = entity.Datas.OriginalSpeed;
+                    entity.Datas.Speed = FollowMouseComponent.AttractionRadius;
                     toMouse = entity.Datas.ToMouse.InitFromV2(entity.Datas.OriginalPos)
                                                   .Sub(currentPos);
     
@@ -116,9 +108,15 @@ $(function() {
                 }
             }
             
-    	});
+    	})
+        .HandleMessage("twist", function(entity, data) {
+            entity.Datas.Position.X += data;
+            entity.Datas.OriginalPos.X += data;
+        });
+        
+    FollowMouseComponent.AttractionRadius = 1000;
                     
-    entitySystem.RegisterComponent('RotateClockwise', null, [], [])
+    entitySystem.RegisterComponent('RotateClockwise', [], [])
         .Update(function(entity, gameTime) {
             if (typeof entity.Datas.Rotation === 'undefined') {                                
                 entity.Datas.Rotation = 0;
@@ -131,7 +129,7 @@ $(function() {
             }
 		});
                     
-    entitySystem.RegisterComponent('MovementUpdater', null, [],
+    entitySystem.RegisterComponent('MovementUpdater', [],
         ['Position', 'Speed', 'Heading'])
         .Update(function(entity, gameTime) {        
             var rot = entity.Datas.Rotation;
@@ -148,7 +146,7 @@ $(function() {
         });
         
     var toRadians = Math.PI/180;
-    entitySystem.RegisterComponent('ImageCanvasRenderer', null, [],
+    entitySystem.RegisterComponent('ImageCanvasRenderer', [],
         ['Position', 'Rotation', 'ImageToRender', 'ContextToRenderOn'])
         .Render(function(entity, gameTime) {
             if (entity.Datas.ContextToRenderOn === null || entity.Datas.ImageToRender === null
@@ -169,7 +167,7 @@ $(function() {
             context.restore();
         });
         
-    entitySystem.RegisterComponent('CellAnimationRenderer', null,
+    entitySystem.RegisterComponent('CellAnimationRenderer',
         ['ImageCanvasRenderer'],
         ['ImageFile', 'CellX', 'CellY', 'FrameCount', 'FramesPerSecond'])
         .Assigned(function(entity, gameTime) {
@@ -195,7 +193,7 @@ $(function() {
             this.CurrentFrame = this.Animation.CurrentFrame;
         });
     
-    entitySystem.RegisterComponent("SomeGuy", null, [], [])
+    entitySystem.RegisterComponent("SomeGuy", [], [])
         .Update(function(entity, gameTime) {
             entity.Datas.Rotation = entity.Datas.Rotation + 0.1;
         });
@@ -223,15 +221,8 @@ $(function() {
         var createNewElement = (function(x, y) {
                 var ent = entitySystem.CreateEntity();
                 
-                //var newDiv = $('<div id="getsMoved"><img width="3" height="3" src="star.png"></img></div>');
-                
-                //ent.Datas.ElementToMove = newDiv.appendTo(bodyElem);
-                
-                ent.Datas.Speed = 1000;//i + 1;
+                ent.Datas.Speed = 1000;
                 ent.Datas.Position = new V2(x, y);
-                
-                //newDiv.css('left', ent.Datas.Position.X);
-                //newDiv.css('top', ent.Datas.Position.Y);
                 
                 ent.Datas.Heading = new V2();
                 
@@ -247,7 +238,6 @@ $(function() {
                 ent.Datas.FramesPerSecond = 5;
                 
                 //ent.Datas.Animation = animation;
-                ent.AddComponent('SomeGuy');
                 //ent.AddComponent('CellAnimationRenderer');
                     
                 ent.AddComponent('FollowMouse');
@@ -295,21 +285,11 @@ $(function() {
             }
         }
         
-        createMultipleRandomElements(100);//entitySystem.IsOnTouchDevice ? 250 : 1000);
+        createMultipleRandomElements(entitySystem.IsOnTouchDevice ? 250 : 1000);
         
         $(document).ready(function () {
             $(window).keydown(function(args) {
                 var char = String.fromCharCode(args.which);
-                /*if (typedYet) {
-                    $('div[id=getsMoved]').text(function(index, text) {
-                        return text + char;  
-                    });
-                } else {
-                    $('div[id=getsMoved]').text(function(index, text) {
-                        return char;  
-                    });
-                    typedYet = true;
-                }*/
                 var entIndex = 0;
                 if (char === ' ') {
                     createMultipleRandomElements(10);
@@ -320,40 +300,9 @@ $(function() {
                             entitySystem.RemoveEntity(entitySystem.EntityUpdateList.Last().Id);
                         }
                     }
-                }/* else if (char === 'N') {
-                    if ((animation.EndFrame + 4) >= animation.Frames.length) {
-                        animation.ChangeAnimationBounds(0, 3);
-                    } else {
-                        animation.ChangeAnimationBounds(animation.StartFrame + 4, animation.EndFrame + 4);   
-                    }
-                    for (entIndex = 0; entIndex < entitySystem.EntityUpdateList.length; entIndex++) {
-                        entitySystem.EntityUpdateList[entIndex].Datas.CurrentFrame = animation.CurrentFrame;
-                    }
-                } else if (char === 'P') {
-                    if ((animation.StartFrame - 4) < 0) {
-                        animation.ChangeAnimationBounds(animation.Frames.length - 4, animation.Frames.length - 1);
-                    } else {
-                        animation.ChangeAnimationBounds(animation.StartFrame - 4, animation.EndFrame - 4);   
-                    }
-                    for (entIndex = 0; entIndex < entitySystem.EntityUpdateList.length; entIndex++) {
-                        entitySystem.EntityUpdateList[entIndex].Datas.CurrentFrame = animation.CurrentFrame;
-                    }
-                }*/
+                }
             });
         });
-        
-//        var elementsToMake = 10;
-//        var divisor = 0;
-//        var maxDivisions = 10;
-//        for (divisor = 0; divisor < (maxDivisions - 1); divisor++) {
-//            for (i = 0; i < elementsToMake; i++) {
-//                createNewElement(docWidth * ((divisor + 1) / maxDivisions), docHeight * (i / elementsToMake));
-//            }
-//                    
-//            for (i = 0; i < elementsToMake; i++) {
-//                createNewElement(docWidth * (i / elementsToMake), docHeight * ((divisor + 1) / maxDivisions));
-//            }
-//        }
     })();
     
     entitySystem.StartUpdating();

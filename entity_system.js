@@ -156,13 +156,47 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     
     /*
       Registers a Component by name in the Components map.
+      
+      @param componentName: The name of the component to make.
+      @param requireComponents: The names of components you require or an object keyed to the names of the components you require and valued at property defaulters.
+        @ ex:
+        @  { MovementUpdater: { Speed: 50, Rotation = Math.PI / 2 }, CycleFinder: null }
+      @param requiredData: The names of data you require or an objected keyed to the names of the data you require and valued at property defaults.
+        @ ex:
+        @ { Speed: 50, Rotation = Math.PI / 2 }
+      
     */
-    this.RegisterComponent = function(componentName, component, requiredComponents, requiredData) {
+    this.RegisterComponent = function(componentName, requiredComponents, requiredData, component) {
     	var newComponent = {
     		ComponentName : componentName,
     		RequiredComponents : requiredComponents,
-    		RequiredData : requiredData
+    		RequiredData : requiredData,
+            MessageHandlers : { }
     	};
+        
+        newComponent.ComponentsDefaultData = { };
+        
+        if (!(requiredComponents instanceof Array) && requiredComponents != null) {
+            newComponent.RequiredData = [];
+            IterateProperties(requiredComponents, function(propName) { 
+                newComponent.ComponentsDefaultData[propName] = requiredData[propName];
+                newComponent.RequiredComponents.push(propName);
+            });
+        } else {
+            newComponent.ComponentsDefaultData = null;
+        }
+        
+        newComponent.DefaultData = { };
+        
+        if (!(requiredData instanceof Array) && requiredData != null) {
+            newComponent.RequiredData = [];
+            IterateProperties(requiredData, function(propName) { 
+                newComponent.DefaultData[propName] = requiredData[propName];
+                newComponent.RequiredData.push(propName);
+            });
+        } else {
+            newComponent.DefaultData = null;
+        }
         
         if (component != null) {
             newComponent.Methods = component;
@@ -190,6 +224,12 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
             return newComponent;
         }
         
+        newComponent.HandleMessage = function(message, handlerFunction) {
+            newComponent.MessageHandlers[message] = handlerFunction;
+            
+            return newComponent;
+        }
+        
         engine.Components[componentName] = newComponent;
         
         return newComponent;
@@ -198,7 +238,7 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     /*
       Adds a component to the entity passed in.
     */
-    this.AddComponentWithRequirements = function(entity, componentName) {
+    this.AddComponentWithRequirements = function(entity, componentName, possibleDefaultObject) {
     	var component = engine.Components[componentName];
     	
     	if (!(componentName in entity.Components)) {
@@ -208,18 +248,35 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
     	
         var i = 0;
     	for (; i < component.RequiredComponents.length; i++) {
-    		if (!(component.RequiredComponents[i] in entity.Components)) {
-    			engine.AddComponentWithRequirements(entity, component.RequiredComponents[i]);
+            var requiredComponentName = component.RequiredComponents[i];
+    		if (!(requiredComponentName in entity.Components)) {
+    			engine.AddComponentWithRequirements(entity, requiredComponentName, (component.ComponentsDefaultData !== null && component.ComponentsDefaultData[requiredComponentName] !== null) ? component.ComponentsDefaultData[requiredComponentName] : null);
     		}
     	}
     	
-        i = 0;
-        for (; i < component.RequiredData.length; i++) {
-    		if (!(component.RequiredData[i] in entity.Datas)) {
-                //TODO: Implement required data factory. See TODO at top of class.
-        		  throw new Error("Entity does not have data: " + component.RequiredData[i] + ", required by component: " + componentName);
-    		}
-    	}
+        var applyRequiredData = function(defaultObject) {
+            i = 0;
+            for (; i < component.RequiredData.length; i++) {
+                var dataName = component.RequiredData[i];
+            	if (!(dataName in entity.Datas)) {
+                    if (dataName in defaultObject && defaultObject[dataName] != null) {
+                        entity.Datas[dataName] = defaultObject[dataName];
+                    } else {
+                        //TODO: Implement required data factory. See TODO at top of class.
+                	    throw new Error("Entity does not have data (or an available default): " + component.RequiredData[i] + ", required by component: " + componentName);   
+                    }
+        		}
+        	}  
+        };
+        
+        //do the passed in data defaults first.
+        if (typeof possibleDefaultObject !== 'undefined' && possibleDefaultObject !== null) {
+            applyRequiredData(possibleDefaultObject);
+        }
+        
+        applyRequiredData(component.DefaultData);
+        
+        
         
         if (typeof component.Methods.Assigned !== 'undefined') {
             engine.Components[componentName].Methods.Assigned.call(entity.Datas, entity, engine.LastUpdateTime);   
@@ -338,6 +395,16 @@ function JSEntitySystem(updateIntervalMilliseconds, canvasContext, fillColor) {
             }
             
             return [self, this];
+        }
+        
+        this.SendMessage = function(message, data) {
+            var i = 0;
+            
+            for (; i < self.UpdateComponents.length; i++) {
+                if (message in self.UpdateComponents[i].MessageHandlers) {
+                    self.UpdateComponents[i].MessageHandlers[message](self, data);
+                }
+            }
         }
     	
     	engine.Entities[this.Id] = this;

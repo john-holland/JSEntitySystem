@@ -1,111 +1,141 @@
 <!DOCTYPE html>
 <html>
-    <style type="text/css">
-        /*div#getsMoved { color:white; }
-        div#fps { color:white; }
-        div#entityCount { color:white; }*/
-        canvas#myCanvas {
-            z-index:-1;
-            position:absolute;
-            left:0;
-            top:0;
-            width:100%;
-            height:100%;
-        }
-        div#entityModifierSlider {
-            margin-top:-10px;
-            margin-bottom:10px;
-        }
-    </style>
-    
-    <link href="JQueryUI/css/smoothness/jquery-ui-1.9.1.custom.css" rel="stylesheet">
-	<!--<script src="JQueryUI/js/jquery-1.8.2.js"></script>
-	<script src="JQueryUI/js/jquery-ui-1.9.1.custom.js"></script>-->
-    <script src="JSLoader.js"></script>
-    <script type="text/javascript">
-        loadScript(["jquery-ui.loader.js",
-                    "entity_system.loader.js",
-                    "game.js"], 
-            function() {
-                $(function() {   
-                    var entCountToMake = 10;
-                    var minEntitiesToMake = 1;
-                    var maxEntitiesToMake = 1000;
-                    
-                    $("#helpContainerDiv").dialog({
-                        autoOpen: true,
-                        width: 500,
-                        height:350,
-                        close: function() {
-                            $("#dialog-link").show();
-                        },
-                        buttons: [
-                            {
-                                text: "Create",
-                                click: function() {
-                                    createMultipleRandomElements(entCountToMake);
-                                }
-                            },
-                            {
-                                text: "Delete",
-                                click: function() {
-                                    deleteMultipleRandomElements(entCountToMake);
-                                }
-                            }
-                        ]
-                    });
-                    
-                    $("#modifyCountP").keyup(function() {
-                        var currentText = $(this).val();
-                        var currentModifyCount = 0;
-                        if (!isNumber(currentText)) {
-                            $(this).css("border-color", "red");
-                            return;
-                        }
-                        currentModifyCount = Math.floor(parseFloat(currentText));
-                        
-                        if (currentModifyCount > maxEntitiesToMake) {
-                            currentModifyCount = maxEntitiesToMake;
-                        } else if (currentModifyCount < minEntitiesToMake) {
-                            currentModifyCount = minEntitiesToMake;
-                        }
-                        
-                        $(this).css("border-color", "white");
-                        
-                        entCountToMake = currentModifyCount;
-                        $("#entityModifierSlider").slider( "value", entCountToMake);
-                        
-                        $(this).val(currentModifyCount);
-                    });
-                    
-                    $("#entityModifierSlider").slider({
-                        range: false,
-                        min: minEntitiesToMake,
-                        max: maxEntitiesToMake,
-                        value: entCountToMake,
-                        slide: function() {
-                            entCountToMake = $(this).slider( "value" );
-                            $("#modifyCountP").val(entCountToMake);
-                        }
-                    });
-                    
-                    $("#dialog-link").button().click(function( event ) {
-                        $("#helpContainerDiv").dialog( "open" );
-                        $(this).hide();
-                        event.preventDefault();
-                    }).hide();
-                });
-            });
-    </script>
     <head>
         <title>JavaScript Entity System Test!</title>
+        <style type="text/css">
+            /*div#getsMoved { color:white; }
+            div#fps { color:white; }
+            div#entityCount { color:white; }*/
+            canvas#myCanvas {
+                z-index:-1;
+                position:absolute;
+                left:0;
+                top:0;
+                width:100%;
+                height:100%;
+            }
+            div#entityModifierSlider {
+                margin-top:-10px;
+                margin-bottom:10px;
+            }
+        </style>
+        
+        <link href="JQueryUI/css/smoothness/jquery-ui-1.9.1.custom.css" rel="stylesheet">
+        <script src="JSLoader.js"></script>
+        <script type="text/javascript">
+            loadScript(["jquery-ui.loader.js",
+                        "entity_system.loader.js",
+                        "game.js"], 
+                function() {
+                    $(function() {   
+                        var entCountToMake = 10;
+                        var minEntitiesToMake = 1;
+                        var maxEntitiesToMake = 1000;
+                        var attractionRadius = 1000;
+                        
+                        $("#helpContainerDiv").dialog({
+                            autoOpen: true,
+                            width: 500,
+                            height:450,
+                            close: function() {
+                                $("#dialog-link").show();
+                            },
+                            buttons: [
+                                {
+                                    text: "Twist!",
+                                    click: function() {
+                                        entitySystem.EntityUpdateList.forEach(function(entity) {
+                                           entity.SendMessage("twist", 5);
+                                        });
+                                    }
+                                },
+                                {
+                                    text: "Create",
+                                    click: function() {
+                                        createMultipleRandomElements(entCountToMake);
+                                    }
+                                },
+                                {
+                                    text: "Delete",
+                                    click: function() {
+                                        deleteMultipleRandomElements(entCountToMake);
+                                    }
+                                }
+                            ]
+                        });
+                        
+                        $("#modifyCountP").keyup(function() {
+                            var currentText = $(this).val();
+                            var currentModifyCount = 0;
+                            if (!isNumber(currentText)) {
+                                $(this).css("border-color", "red");
+                                return;
+                            }
+                            currentModifyCount = Math.floor(parseFloat(currentText));
+                            
+                            if (currentModifyCount > maxEntitiesToMake) {
+                                currentModifyCount = maxEntitiesToMake;
+                            } else if (currentModifyCount < minEntitiesToMake) {
+                                currentModifyCount = minEntitiesToMake;
+                            }
+                            
+                            $(this).css("border-color", "white");
+                            
+                            entCountToMake = currentModifyCount;
+                            $("#entityModifierSlider").slider( "value", entCountToMake);
+                            
+                            $(this).val(currentModifyCount);
+                        });
+                        
+                        $("#entityModifierSlider").slider({
+                            range: false,
+                            min: minEntitiesToMake,
+                            max: maxEntitiesToMake,
+                            value: entCountToMake,
+                            slide: function() {
+                                entCountToMake = $(this).slider( "value" );
+                                $("#modifyCountP").val(entCountToMake);
+                            }
+                        });
+                        
+                        var setAttractionRadius = function(newRadius) {
+                          FollowMouseComponent.AttractionRadius = newRadius;
+                        };
+                        
+                        $("#attractionRadiusSlider").slider({
+                            range:false,
+                            min: -10000,
+                            max: 10000,
+                            value: attractionRadius,
+                            slide: function() {
+                                setAttractionRadius($(this).slider( "value" ));
+                                $("#attractionRadiusEditBox").val(FollowMouseComponent.AttractionRadius);
+                            }
+                        });
+                        
+                        $("#attractionRadiusEditBox").keyup(function() {
+                            var newVal = $(this).val();
+                            if (isNumber(newVal)) {
+                                setAttractionRadius(parseFloat(newVal));
+                                $("#attractionRadiusSlider").slider( "value", FollowMouseComponent.AttractionRadius );
+                            }
+                        })
+                        
+                        $("#dialog-link").button().click(function( event ) {
+                            $("#helpContainerDiv").dialog( "open" );
+                            $(this).hide();
+                            event.preventDefault();
+                        }).hide();
+                    });
+                });
+        </script>
     </head>
     <body bgcolor="black">
         <canvas id="myCanvas">
             Your browser does not support the HTML5 canvas tag. Boooooo
         </canvas>
         <p><a href="#" id="dialog-link" class="ui-state-default ui-corner-all">Show Help Dialog</a></p>
-        <div id="helpContainerDiv" class="noSelect" title="Help / Debug">
+        <div id="helpContainerDiv" class="noSelect" title="Javascript Entity System Canvas Demo">
             Click and drag to attract entities.
             <Br />  Press 'Space' to add more entities (10 at a time).
             <Br />  Press 'D' remove entities (10 at a time).
@@ -113,7 +143,8 @@
             <Br />
             <p><label>Create / Delete count: </label><input type="text" id="modifyCountP" value="10" /></p>
             <div id="entityModifierSlider"></div>
-            
+            <p><label>Attraction Radius: </label><input type="text" id="attractionRadiusEditBox" value="10" /></p>
+            <div id="attractionRadiusSlider"></div>
             <div style="float:left" class="noSelect" id="fps" color="#FFFFFF">0</div>
             <div style="float:right" class="noSelect" id="entityCount" color="#FFFFFF">0</div>
         </div>

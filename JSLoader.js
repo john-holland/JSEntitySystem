@@ -19,7 +19,8 @@ var loadScript = function(url, callback){
         }
     
         script.src = urlToLoad;
-        document.getElementsByTagName("head")[0].appendChild(script);
+        //document.getElementsByTagName("head")[0].appendChild(script);
+        document.documentElement.insertBefore(script, document.documentElement.firstChild);
     };
 
     if (typeof url === 'string') {

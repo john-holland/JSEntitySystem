@@ -1,8 +1,8 @@
 //This functions much like jQuery.each.
-function IterateProperties(theObject, func) {
-    for (p in theObject) {
-        if (theObject.hasOwnProperty(p)) {
-            func(p);   
+var IterateProperties = function(obj, func) {
+    for (propertyName in obj) {
+        if (obj.hasOwnProperty(propertyName)) {
+            func(propertyName);   
         }
     }
 }
